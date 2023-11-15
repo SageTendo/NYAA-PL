@@ -1,3 +1,3 @@
-nyaa_main() {
-    say("Hello world");
+nyaa_main() => {
+   printu("Ohayo!");
 }

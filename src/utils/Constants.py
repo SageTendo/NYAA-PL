@@ -1,0 +1,3 @@
+EOF = ""
+MAX_ID_LEN = 32
+MAX_STR_LEN = 1024
