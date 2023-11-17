@@ -1,10 +1,11 @@
-from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
-from src.utils.ErrorHandler import throw_err
 from src.Token import Token
 from src.Types import TokenType
+from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
+from src.utils.ErrorHandler import throw_err
 
 RESERVED_WORDS = {
     "nyaa_main": TokenType.MAIN,
+    "namae": TokenType.VAR,
     "printu": TokenType.PRINT,
     "ohayo": TokenType.INPUT,
     "daijobu": TokenType.WHILE,
@@ -51,6 +52,8 @@ class Lexer:
         def __init__(self, line_number, column_number):
             self.line_number = line_number
             self.column_number = column_number
+
+    __debug_mode = False
 
     def __init__(self):
         self.__program_file = []
@@ -180,7 +183,8 @@ class Lexer:
         else:
             token.type = TokenType.ENDMARKER
 
-        # return fetched token
+        # Check token is valid before returning it
+        self.validate_token(token)
         return token
 
     def _process_word(self, token):
@@ -309,3 +313,15 @@ class Lexer:
 
     def get_col_number(self):
         return self.__position.column_number
+
+    def validate_token(self, token):
+        if self.__debug_mode:
+            print(token)
+
+        if token.type == TokenType.ERR:
+            msg = (f"Unrecognized symbol {self.get_last_read()} "
+                   f"found at {self.get_line_number()}:{self.get_col_number()}...")
+            throw_err(msg)
+
+    def verbose(self, debug_mode=False):
+        self.__debug_mode = debug_mode

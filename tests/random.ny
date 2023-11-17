@@ -21,23 +21,24 @@ nyaa_main() => {
     printu("hello", "world!");
     printu(a purasu b);
     printu(a++);
-    a asain 3;
-    b asain 4;
-    c asain nai a;
-    a asain -a;
+    namae a asain 3.2;
+    namae b asain 4;
+    namae c asain nai a;
+    namae a asain -a;
 
     print(a ando nai b);
 
     a++;
-    a asain (a purasu b);
-    ((b--));
-    B asain a++;
+    namae a asain (a purasu b);
+    ohayo("hello");
+    b--;
+    namae B asain a++;
     printu(HAI);
     printu(IIE);
-    a asain a == b;
+    namae a asain a == b;
 
-    name asain ohayo("User: ");
-    name asain ohayo();
+    namae name asain ohayo("User: ");
+    namae age asain ohayo();
 
     uWu i from(0, 1) {
         printu(i);

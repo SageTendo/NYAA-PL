@@ -3,35 +3,39 @@ from enum import Enum, auto
 
 class TokenType(Enum):
     """Token types"""
-    ID = auto()  # Identifier
-
-    # Keywords
+    # Program start
     MAIN = auto()  # nyaa_main
-    PRINT = auto()  # printu
-    INPUT = auto()  # ohayo
-    ASSIGN = auto()  # asain
 
-    WHILE = auto()  # while
-    FOR = auto()  # for
-    IF = auto()  # if
-    ELSE = auto()  # else
-    ELIF = auto()  # elif
-    RANGE = auto()  # from
-    PASS = auto()  # pasu
-    BREAK = auto()  # yamete
-    CONTINUE = auto()  # motto
-
-    DEF = auto()  # kawaii
-    TRY = auto()  # ganbatte
-    EXCEPT = auto()  # gome
-
+    # Types
     INT = auto()  # inteja
     STR = auto()  # soturingu
     FLOAT = auto()  # furoto
     BOOL = auto()  # buru
-    RET = auto()  # sayonara
     TRUE = auto()  # HAI
     FALSE = auto()  # IIE
+
+    # Statements (Independent)
+    VAR = auto()  # namae
+    ID = auto()  # Identifier
+    DEF = auto()  # kawaii
+    IF = auto()  # if
+    WHILE = auto()  # while
+    FOR = auto()  # for
+    TRY = auto()  # ganbatte
+    INPUT = auto()  # ohayo
+    PRINT = auto()  # printu
+    # Breaks
+    PASS = auto()  # pasu
+    CONTINUE = auto()  # motto
+    BREAK = auto()  # yamete
+    RET = auto()  # sayonara
+
+    # Dependent statements
+    ELIF = auto()  # elif
+    ELSE = auto()  # else
+    ASSIGN = auto()  # asain
+    RANGE = auto()  # from
+    EXCEPT = auto()  # gome
 
     # Non-alphabetic operators
     TO = auto()  # =>
@@ -41,10 +45,6 @@ class TokenType(Enum):
     LBRACE = auto()  # {
     RBRACE = auto()  # }
     COMMA = auto()  # ,
-    # LBRACKET = auto()  # [
-    # RBRACKET = auto()  # ]
-    # COLON = auto()  # :
-    # TYPE_ASSIGN = auto()  # ::
 
     # Binary operators
     PLUS = auto()  # purasu
@@ -67,8 +67,47 @@ class TokenType(Enum):
     UN_ADD = auto()  # ++
     UN_SUB = auto()  # --
 
-    # End marker
     ENDMARKER = auto()  # End of file
+    ERR = auto()  # Lexer only
+
+    @classmethod
+    def body_start(cls, token):
+        return token.type in [
+            TokenType.VAR, TokenType.DEF, TokenType.PASS, TokenType.BREAK,
+            TokenType.CONTINUE, TokenType.RET, TokenType.NOT, TokenType.NEG,
+            TokenType.ID, TokenType.FOR, TokenType.WHILE, TokenType.IF,
+            TokenType.PRINT, TokenType.INPUT, TokenType.TRY
+        ]
+
+    @classmethod
+    def unary(cls, token):
+        return token.type in [
+            TokenType.NEG, TokenType.NOT
+        ]
+
+    @classmethod
+    def conditional(cls, token):
+        pass
+
+    @classmethod
+    def expression(cls, token):
+        return token.type in [TokenType.NEG, TokenType.LPAR] or cls.term(token)
+
+    @classmethod
+    def term(cls, token):
+        return token.type in [
+            TokenType.ID, TokenType.INT, TokenType.STR,
+            TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE
+        ]
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def bin_op(cls, token):
+        return token.type in [
+            TokenType.PLUS, TokenType.MINUS, TokenType.MULTIPLY,
+            TokenType.DIVIDE, TokenType.EQ, TokenType.NEQ, TokenType.LT,
+            TokenType.GT, TokenType.LTE, TokenType.GTE, TokenType.AND,
+            TokenType.OR
+        ]
