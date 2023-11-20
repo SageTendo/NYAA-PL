@@ -15,12 +15,10 @@ class TokenType(Enum):
     FALSE = auto()  # IIE
 
     # Statements (Independent)
-    VAR = auto()  # namae
     ID = auto()  # Identifier
     DEF = auto()  # kawaii
     IF = auto()  # if
     WHILE = auto()  # while
-    FOR = auto()  # for
     TRY = auto()  # ganbatte
     INPUT = auto()  # ohayo
     PRINT = auto()  # printu
@@ -34,7 +32,6 @@ class TokenType(Enum):
     ELIF = auto()  # elif
     ELSE = auto()  # else
     ASSIGN = auto()  # asain
-    RANGE = auto()  # from
     EXCEPT = auto()  # gome
 
     # Non-alphabetic operators
@@ -45,6 +42,7 @@ class TokenType(Enum):
     LBRACE = auto()  # {
     RBRACE = auto()  # }
     COMMA = auto()  # ,
+    PERIOD = auto()  # .
 
     # Binary operators
     PLUS = auto()  # purasu
@@ -71,12 +69,17 @@ class TokenType(Enum):
     ERR = auto()  # Lexer only
 
     @classmethod
-    def body_start(cls, token):
+    def statement_start(cls, token):
         return token.type in [
-            TokenType.VAR, TokenType.DEF, TokenType.PASS, TokenType.BREAK,
-            TokenType.CONTINUE, TokenType.RET, TokenType.NOT, TokenType.NEG,
-            TokenType.ID, TokenType.FOR, TokenType.WHILE, TokenType.IF,
+            TokenType.PASS, TokenType.RET,
+            TokenType.ID, TokenType.WHILE, TokenType.IF,
             TokenType.PRINT, TokenType.INPUT, TokenType.TRY
+        ]
+
+    @classmethod
+    def postfix(cls, token):
+        return token.type in [
+            TokenType.UN_ADD, TokenType.UN_SUB
         ]
 
     @classmethod
@@ -86,28 +89,49 @@ class TokenType(Enum):
         ]
 
     @classmethod
-    def conditional(cls, token):
-        pass
-
-    @classmethod
     def expression(cls, token):
-        return token.type in [TokenType.NEG, TokenType.LPAR] or cls.term(token)
+        return cls.factor(token)
 
     @classmethod
     def term(cls, token):
-        return token.type in [
+        return cls.factor(token)
+
+    @classmethod
+    def factor(cls, curr_tkn):
+        return curr_tkn.type in [
             TokenType.ID, TokenType.INT, TokenType.STR,
-            TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE
+            TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE,
+            TokenType.LPAR, TokenType.NEG, TokenType.NOT
+        ]
+
+    @classmethod
+    def bin_op(cls, token):
+        return cls.rel_op(token) or cls.add_op(token) or cls.mul_op(token)
+
+    @classmethod
+    def rel_op(cls, token):
+        return token.type in [
+            TokenType.EQ, TokenType.NEQ, TokenType.LT,
+            TokenType.GT, TokenType.LTE, TokenType.GTE
+        ]
+
+    @classmethod
+    def add_op(cls, token):
+        return token.type in [
+            TokenType.PLUS, TokenType.MINUS, TokenType.OR
+        ]
+
+    @classmethod
+    def mul_op(cls, token):
+        return token.type in [
+            TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.AND
         ]
 
     def __str__(self):
         return self.name
 
     @classmethod
-    def bin_op(cls, token):
-        return token.type in [
-            TokenType.PLUS, TokenType.MINUS, TokenType.MULTIPLY,
-            TokenType.DIVIDE, TokenType.EQ, TokenType.NEQ, TokenType.LT,
-            TokenType.GT, TokenType.LTE, TokenType.GTE, TokenType.AND,
-            TokenType.OR
+    def callable(cls, curr_tkn):
+        return curr_tkn.type in [
+            TokenType.ID, TokenType.PRINT, TokenType.INPUT
         ]

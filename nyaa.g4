@@ -7,75 +7,77 @@ fragment ESCAPE: '\\' ('\\' | '"' | 'n' | 't');
 fragment Letter: [a-zA-Z_];
 fragment Digit: [0-9];
 
-// Starting variable
-program            : (funcDef* MAIN LPAR RPAR TO (LBRACE body* RBRACE | body)) | EOF;
-
 //importStatements:
 //                  (importStatement
 //                | fromImportStatement) ';';
 //importStatement: NOTICE ME ID SENPAI;
 //fromImportStatement: PLEASE NOTICE ME (ID ('.' ID)+) SENPAI;
 
+// Starting variable
+program            : funcDef* MAIN LPAR RPAR TO (LBRACE body RBRACE | statement ';') | EOF;
+funcDef            : DEFINE ID LPAR (ID (',' ID)*)? RPAR TO LBRACE body RBRACE;
+
 // Statements
-body               : statement ';' | condStatements | callableStatements ';' | tryCatchStatement;
+body               : statement*;
+
+statement          : PASS
+                    |assignmentStatement
+                    |retStatement
+                    |whileStatement
+                    |ifStatement
+                    |printStatement
+                    |inputStatement
+                    |callStatement
+                    |postfixExpression
+                    |tryCatchStatement;
+
+assignmentStatement: ID ASSIGN (expression | callableStatements);
 retStatement       : RET expression?;
-tryCatchStatement  : TRY LBRACE body* RBRACE EXCEPT LBRACE body* RBRACE;
+tryCatchStatement  : TRY LBRACE body RBRACE EXCEPT LBRACE body RBRACE;
 
-statement          :(varDef
-                    | funcDef
-                    | PASS
-                    | BREAK
-                    | CONTINUE
-                    | retStatement
-                    | nameStatement
-                    | unaryExpressison);
-
+// Args
+args               : LPAR ((expression|callableStatements) (',' (expression|callableStatements))*)? RPAR;
 
 // Callable Statements
-callableStatements : printStatement | inputStatement;
-printStatement     : PRINT LPAR ((expression | nameStatement) (',' (expression | nameStatement))*)? RPAR;
+callableStatements : printStatement | inputStatement | callStatement;
+printStatement     : PRINT args;
 inputStatement     : INPUT LPAR STR_CONSTANT? RPAR;
-nameStatement      : ID LPAR (params*) RPAR;
+callStatement      : ID args;
 
 // Conditional Statements
-condStatements     : forStatement| whileStatement| ifStatement;
-forStatement       : FOR ID RANGE LPAR expression (',' expression)* RPAR (LBRACE body* RBRACE);
-whileStatement     : WHILE LPAR expression RPAR LBRACE body* RBRACE;
-ifStatement        : IF LPAR expression RPAR LBRACE body* RBRACE (elifStatement | elseStatement)*;
-elifStatement      : ELIF LPAR expression RPAR LBRACE body* RBRACE;
+whileStatement     : WHILE LPAR expression RPAR LBRACE (CONTINUE | BREAK | body) RBRACE;
+ifStatement        : IF LPAR expression RPAR LBRACE body RBRACE elifStatement* elseStatement?;
+elifStatement      : ELIF LPAR expression RPAR LBRACE body RBRACE;
 elseStatement      : ELSE LBRACE body RBRACE;
 
-// Definition Statements
-varDef             : VAR ID ASSIGN (expression | callableStatements);
-funcDef            : DEFINE ID LPAR argsList? RPAR TO LBRACE body* RBRACE;
-
-// Args/Params/Types
-type               : INT| STR | FLOAT | BOOL;
-params             : expression (',' expression)*;
-argsList           : type? ID (',' type? ID)*;
-
 // Expressions
-expression         : NEG? (term (binaryOperator term)* | term (binaryOperator expression)* | LPAR expression RPAR);
-unaryExpressison   : (NOT | NEG) ID | ID (UN_ADD | UN_SUB);
-term               : ID
-                   | INT_CONSTANT
-                   | INT_CONSTANT PERIOD INT_CONSTANT
-                   | STR_CONSTANT
-                   | TRUE
-                   | FALSE;
-binaryOperator     : PLUS| MINUS| MULTIPLY| DIVIDE
-                    | EQ| NEQ| LT| GT
-                    | LTE| GTE| AND| OR;
+postfixExpression  : ID (UN_ADD | UN_SUB);
+expression         : simple (relOperator simple)?;
+simple             : term (addOp term)*;
+term               : factor (mulOp factor)*;
+factor             : NEG factor
+                    |NOT factor
+                    |LPAR expression RPAR
+                    |ID
+                    |TRUE
+                    |FALSE
+                    |INT_CONSTANT
+                    |FLOAT_CONSTANT
+                    |STR_CONSTANT;
+
+addOp              : PLUS | MINUS | OR;
+mulOp              : AND | DIVIDE | MULTIPLY;
+relOperator       : EQ| NEQ| LT| GT
+                    | LTE| GTE;
 
 // Lexer rules
 PLEASE: 'please';
 NOTICE: 'notice';
 ME: 'me';
 SENPAI: 'senpai';
-VAR: 'namae';
 
-MAIN : 'nyaa_main';
-PRINT : 'printu';
+MAIN : 'uWu_nyaa';
+PRINT : 'purinto';
 INPUT : 'ohayo';
 WHILE : 'daijoubu';
 FOR : 'uWu';
@@ -91,10 +93,6 @@ TRY: 'ganbatte';
 EXCEPT: 'gomenasai';
 TRUE: 'HAI';
 FALSE: 'IIE';
-INT : 'inteja';
-STR : 'soturingu';
-FLOAT : 'furoto';
-BOOL : 'buru';
 RET : 'sayonara';
 ASSIGN : 'asain';
 PLUS : 'purasu';
@@ -133,6 +131,7 @@ PERIOD : '.';
 ID : (Letter | '_') (Letter | Digit | '_')*;
 INT_CONSTANT : Digit+;
 STR_CONSTANT : '"' ~[\r\n"]* '"';
+FLOAT_CONSTANT: INT_CONSTANT '.' INT_CONSTANT;
 
 // Skip whitespaces and comments
 WS: [ \t\n\r]+ -> skip;

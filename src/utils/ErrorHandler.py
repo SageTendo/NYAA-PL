@@ -9,7 +9,7 @@ ENDC = '\033[0m'
 def throw_unexpected_token_err(token_type, expected_type, line_number, col_number):
     throw_err(
         f"{__file__}: "
-        f"Unexpected token found at {line_number}:{col_number()}.\n"
+        f"Unexpected token found at {line_number}:{col_number}.\n"
         f"Expected {expected_type}, but got {token_type} instead..."
     )
 
@@ -20,7 +20,7 @@ def throw_err(msg):
     @param msg: The message to display to the console
     """
     print(f"{ERROR}{msg}{ENDC}", file=sys.stderr)
-    sys.exit(1)
+    exit(1)
 
 
 def warning_msg(msg):

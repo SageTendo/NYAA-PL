@@ -4,28 +4,21 @@ from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
 from src.utils.ErrorHandler import throw_err
 
 RESERVED_WORDS = {
-    "nyaa_main": TokenType.MAIN,
-    "namae": TokenType.VAR,
-    "printu": TokenType.PRINT,
+    "uWu_nyaa": TokenType.MAIN,
+    "purinto": TokenType.PRINT,
     "ohayo": TokenType.INPUT,
-    "daijobu": TokenType.WHILE,
-    "uWu": TokenType.FOR,
+    "daijoubu": TokenType.WHILE,
     "nani": TokenType.IF,
     "nandesuka": TokenType.ELIF,
     "baka": TokenType.ELSE,
-    'from': TokenType.RANGE,
     'yamete': TokenType.BREAK,
     'pasu': TokenType.PASS,
     'motto': TokenType.CONTINUE,
     'kawaii': TokenType.DEF,
     'ganbatte': TokenType.TRY,
-    'gome': TokenType.EXCEPT,
+    'gomenasai': TokenType.EXCEPT,
     'HAI': TokenType.TRUE,
     'IIE': TokenType.FALSE,
-    "inteja": TokenType.INT,
-    "sutoringu": TokenType.STR,
-    "furoto": TokenType.FLOAT,
-    "buru": TokenType.BOOL,
     'asain': TokenType.ASSIGN,
     "sayonara": TokenType.RET,
     'purasu': TokenType.PLUS,
@@ -64,6 +57,7 @@ class Lexer:
         self.__column_number = 0
         self.__line_number = 1
         self.__position = self._Position(1, 0)
+        self.__buffer = []
 
     def _next_char(self):
         """
@@ -98,8 +92,17 @@ class Lexer:
                 c = f.read(1)
         self._next_char()
 
+    def peek_token(self):
+        token = self.get_token()
+        self.__buffer.append(token)
+        return token
+
     def get_token(self):
         token = Token()
+
+        # Check if there are any tokens in the buffer
+        if len(self.__buffer) > 0:
+            return self.__buffer.pop(0)
 
         # Skip whitespace
         while self.__ch.isspace():
@@ -180,11 +183,17 @@ class Lexer:
                 elif self.__ch == ',':
                     token.type = TokenType.COMMA
                     self._next_char()
+                elif self.__ch == '.':
+                    token.type = TokenType.PERIOD
+                    self._next_char()
+                else:
+                    throw_err(
+                        f"Unexpected character: '{self.__ch}' at "
+                        f"{self.__position.line_number}:{self.__column_number}")
         else:
             token.type = TokenType.ENDMARKER
 
-        # Check token is valid before returning it
-        self.validate_token(token)
+        self.debug_info(token)
         return token
 
     def _process_word(self, token):
@@ -215,7 +224,7 @@ class Lexer:
             return
 
         # Set token params
-        token.word = processed_word
+        token.value = processed_word
         token.type = TokenType.ID
 
     def _process_number(self, token):
@@ -262,14 +271,12 @@ class Lexer:
                 elif self.__ch == '\\':
                     processed_string += '\\'
                 else:
-                    throw_err(
-                        f"Unexpected escape character: "
-                        f"'{self.__ch}' at {self.__position.line_number}:{self.__column_number}")
+                    throw_err(f"Unexpected escape character: "
+                              f"'{self.__ch}' at {self.__position.line_number}:{self.__column_number}")
 
             # Reached end of file
             if self.__ch == EOF:
-                throw_err(f"Unterminated string at "
-                          f"{self.__position.line_number}:{self.__position.column_number}")
+                throw_err(f"Unterminated string at {self.__position.line_number}:{self.__position.column_number}")
 
             # Check for Non-printables
             if not self.__ch.isprintable():
@@ -305,23 +312,15 @@ class Lexer:
     def get_last_read(self):
         return self.__last_read_ch
 
-    def get_curr(self):
-        return self.__ch
-
     def get_line_number(self):
         return self.__position.line_number
 
     def get_col_number(self):
         return self.__position.column_number
 
-    def validate_token(self, token):
+    def debug_info(self, token):
         if self.__debug_mode:
             print(token)
-
-        if token.type == TokenType.ERR:
-            msg = (f"Unrecognized symbol {self.get_last_read()} "
-                   f"found at {self.get_line_number()}:{self.get_col_number()}...")
-            throw_err(msg)
 
     def verbose(self, debug_mode=False):
         self.__debug_mode = debug_mode
