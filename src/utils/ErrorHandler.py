@@ -6,11 +6,18 @@ SUCCESS = '\033[92m'
 ENDC = '\033[0m'
 
 
+def throw_unexpected_char_err(char, line_number, col_number):
+    throw_err(
+        f"{__file__}:\n"
+        f"Unexpected character {WARNING}'{char}'{ERROR} at position {WARNING}{line_number}:{col_number}{ENDC}"
+    )
+
+
 def throw_unexpected_token_err(token_type, expected_type, line_number, col_number):
     throw_err(
         f"{__file__}: "
         f"Unexpected token found at {line_number}:{col_number}.\n"
-        f"Expected {expected_type}, but got {token_type} instead..."
+        f"Expected {SUCCESS}{expected_type}{ERROR}, but found {WARNING}{token_type}{ERROR}"
     )
 
 

@@ -1,3 +1,3 @@
-nyaa_main() => {
+uWu_nyaa() => {
     sayonara 2
 }

@@ -4,7 +4,7 @@ from enum import Enum, auto
 class TokenType(Enum):
     """Token types"""
     # Program start
-    MAIN = auto()  # nyaa_main
+    MAIN = auto()  # uWu_nyaa
 
     # Types
     INT = auto()  # inteja

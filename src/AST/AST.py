@@ -109,7 +109,7 @@ class TryCatchNode(Node):
         self.catch_body = catch_body
 
     def __repr__(self):
-        return f"{self.label}: {self.body} | {self.catch_body}"
+        return f"{self.label}: {self.body} | Catch: [{self.catch_body}]"
 
 
 class ArgsNode(Node):
@@ -170,6 +170,9 @@ class IfNode(ConditionalNode):
     def set_else_body(self, body):
         self.else_body = body
 
+    def __repr__(self):
+        return f"{self.label}: {self.expr} {self.body} | Elifs:{self.else_if_statements} | Else: {self.else_body}"
+
 
 class ElifNode(ConditionalNode):
     def __init__(self, expr, body):
@@ -200,7 +203,9 @@ class ExprNode(Node):
         self.op = op
 
     def __repr__(self):
-        return f"{self.label}: {self.left} {self.op} {self.right}"
+        if self.op and self.right:
+            return f"{self.label}: {self.left} {self.op} {self.right}"
+        return f"{self.label}: {self.left}"
 
     def __str__(self):
         return self.__repr__()
@@ -213,7 +218,7 @@ class PostfixExprNode(Node):
         self.op = op
 
     def __repr__(self):
-        return f"{self.label}: {self.left} {self.op}"
+        return f"{self.label}: ({self.left}) {self.op}"
 
 
 class SimpleExprNode(Node):
@@ -247,16 +252,9 @@ class FactorNode(Node):
         self.right = right
 
     def __repr__(self):
-        return f"{self.label}: {self.left} {self.right}"
-
-
-class UnaryNode(Node):
-    def __init__(self, value):
-        super().__init__("Unary")
-        self.value = value
-
-    def __repr__(self):
-        return f"{self.label}: {self.value}"
+        if self.right:
+            return f"{self.label}: {self.left} {self.right}"
+        return f"{self.label}: {self.left}"
 
 
 class IdentifierNode(Node):
@@ -276,7 +274,7 @@ class NumericLiteralNode(Node):
         self.value = token.value
 
     def __repr__(self):
-        return f"{self.label}: {self.value}"
+        return f"{self.label}({self.type}): {self.value}"
 
 
 class StringLiteralNode(Node):
@@ -288,7 +286,7 @@ class StringLiteralNode(Node):
         return f"{self.label}: {self.value}"
 
 
-class BooleanLiteralNode(Node):
+class BooleanOpNode(Node):
     def __init__(self, token):
         super().__init__("BooleanLiteral")
         self.value = token.type
@@ -303,6 +301,8 @@ class OperatorNode(Node):
         self.value = value
 
     def __repr__(self):
+        if self.value is None:
+            return f"{self.label}: None"
         return f"{self.label}: {self.value}"
 
 

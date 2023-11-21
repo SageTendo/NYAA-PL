@@ -1,7 +1,7 @@
 from src.Token import Token
 from src.Types import TokenType
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
-from src.utils.ErrorHandler import throw_err
+from src.utils.ErrorHandler import throw_err, throw_unexpected_char_err
 
 RESERVED_WORDS = {
     "uWu_nyaa": TokenType.MAIN,
@@ -36,7 +36,8 @@ EXIT_SYMBOLS = [' ', '\t', '\n',
                 ']', '+', '-',
                 '*', '/', '%',
                 '!', '<', '>',
-                '&', '|', ','
+                '&', '|', ',',
+                EOF
                 ]
 
 
@@ -186,14 +187,10 @@ class Lexer:
                 elif self.__ch == '.':
                     token.type = TokenType.PERIOD
                     self._next_char()
-                else:
-                    throw_err(
-                        f"Unexpected character: '{self.__ch}' at "
-                        f"{self.__position.line_number}:{self.__column_number}")
         else:
             token.type = TokenType.ENDMARKER
 
-        self.debug_info(token)
+        self.validate(token)
         return token
 
     def _process_word(self, token):
@@ -324,3 +321,11 @@ class Lexer:
 
     def verbose(self, debug_mode=False):
         self.__debug_mode = debug_mode
+
+    def validate(self, token):
+        if self.__debug_mode:
+            print(token)
+
+        if not token.type:
+            throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__position.column_number)
+        return token

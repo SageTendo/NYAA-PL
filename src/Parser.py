@@ -1,7 +1,7 @@
 from src.AST.AST import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, IdentifierNode, \
-    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanLiteralNode, NegationNode, \
+    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanOpNode, NegationNode, \
     FactorNode, NotNode, TermNode, MulOpNode, AddOpNode, ExprNode, CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode
+    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, RelOpNode
 from src.Lexer import Lexer
 from src.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err
@@ -16,13 +16,27 @@ class Parser:
         self.__program_AST = None
 
     def debug_info(self, msg, success=True):
+        """
+        Print a debug message
+        @param msg: The message to display
+        @param success: Whether the message is a success message or not
+        """
         if self.__debug_mode:
             success_msg(msg) if success else warning_msg(msg)
 
     def match(self, expected_type):
+        """
+        Check if the current token type matches the expected type
+        @param expected_type: The type of token expected to be parsed
+        @return: True if the current token type matches the expected type, False otherwise
+        """
         return self.curr_tkn.type == expected_type
 
     def peek_token(self):
+        """
+        Peek at the next token to be parsed
+        @return: The next token to be parsed
+        """
         return self.__lexer.peek_token()
 
     def __expect_and_consume(self, expected_type):
@@ -41,7 +55,6 @@ class Parser:
     def consume_token(self):
         """
         Consumes the current token and prepares the next token to be parsed
-        @return:
         """
         self.debug_info(f"Consuming {self.curr_tkn}...", success=False)
         self.curr_tkn = self.__lexer.get_token()
@@ -61,7 +74,7 @@ class Parser:
         while self.curr_tkn.type == TokenType.DEF:
             program_node.append_func(self.parse_func_def())
 
-        # handle nyaa_main() => { tokens
+        # handle uWu_nyaa() => { tokens
         self.__expect_and_consume(TokenType.MAIN)
         self.__expect_and_consume(TokenType.LPAR)
         self.__expect_and_consume(TokenType.RPAR)
@@ -71,6 +84,7 @@ class Parser:
         if TokenType.statement_start(self.curr_tkn):
             self.debug_info("<Statements>")
             program_node.set_body(self.parse_body())
+            self.__expect_and_consume(TokenType.SEMICOLON)
         else:
             #  { body* }
             self.__expect_and_consume(TokenType.LBRACE)
@@ -91,7 +105,7 @@ class Parser:
         body = BodyNode()
         while TokenType.statement_start(self.curr_tkn):
 
-            # Parse statements
+            # Pass statement
             if self.match(TokenType.PASS):
                 self.__expect_and_consume(TokenType.PASS)
 
@@ -99,6 +113,7 @@ class Parser:
                 body.append(PassNode())
                 self.debug_info("</PASS>")
 
+            #  Return statement
             elif self.match(TokenType.RET):
                 self.debug_info("<Return>")
                 body.append(self.parse_return())
@@ -122,6 +137,13 @@ class Parser:
                     self.debug_info("<FuncCall>")
                     body.append(self.parse_func_call())
                     self.debug_info("</FuncCall>")
+
+                else:
+                    throw_unexpected_token_err(
+                        self.curr_tkn.type,
+                        "ASSIGNMENT_TYPE / POSTFIX_TYPE / FUNC_CALL_TYPE",
+                        self.__lexer.get_line_number(),
+                        self.__lexer.get_col_number())
             else:
                 # while statement
                 if self.match(TokenType.WHILE):
@@ -149,23 +171,28 @@ class Parser:
 
                 # try-catch statement
                 elif self.match(TokenType.TRY):
-                    self.parse_try_catch()
+                    self.debug_info("<TryCatch>")
+                    body.append(self.parse_try_catch())
+                    self.debug_info("</TryCatch>")
 
         return body
 
     def parse_func_def(self):
+        """
+        FuncDef: DEF ID args TO (LBRACE body RBRACE | statement ';')
+        @return: FuncDefNode
+        """
         self.__expect_and_consume(TokenType.DEF)
         identifier = self.curr_tkn
         self.__expect_and_consume(TokenType.ID)
 
         args = None
-        self.__expect_and_consume(TokenType.LPAR)
-        if self.curr_tkn.type == TokenType.RPAR:
+        if self.peek_token().type == TokenType.RPAR:
+            self.__expect_and_consume(TokenType.LPAR)
             self.__expect_and_consume(TokenType.RPAR)
         else:
             self.debug_info("<Args>")
             args = self.parse_args()
-            self.__expect_and_consume(TokenType.RPAR)
             self.debug_info("</Args>")
 
         self.__expect_and_consume(TokenType.TO)
@@ -183,6 +210,10 @@ class Parser:
         return FuncDefNode(identifier, args, body)
 
     def parse_func_call(self):
+        """
+        funcCall: ID args
+        @return: CallNode
+        """
         identifier = self.curr_tkn
         self.__expect_and_consume(TokenType.ID)
 
@@ -192,6 +223,10 @@ class Parser:
         return CallNode(identifier, args)
 
     def parse_postfix(self):
+        """
+        PostfixExpr: ID (UN_ADD | UN_SUB)
+        @return: PostfixExprNode
+        """
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -204,6 +239,10 @@ class Parser:
         return PostfixExprNode(left_node, op)
 
     def parse_assignment(self):
+        """
+        Assignment: ID ASSIGN (expr | callable)
+        @return: AssignmentNode
+        """
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -220,6 +259,10 @@ class Parser:
         return AssignmentNode(left_node, right_node)
 
     def parse_while(self):
+        """
+        WhileStatement: WHILE ( expr ) { ( body | BREAK | CONTINUE) }
+        @return: WhileNode
+        """
         right_node = None
         self.__expect_and_consume(TokenType.WHILE)
 
@@ -251,6 +294,10 @@ class Parser:
         return WhileNode(left_node, right_node)
 
     def parse_if(self):
+        """
+        IfStatement: IF ( expr ) { body }
+        @return: IfNode
+        """
         right_node = None
         self.__expect_and_consume(TokenType.IF)
 
@@ -279,6 +326,10 @@ class Parser:
         return if_node
 
     def parse_elif(self):
+        """
+        ElifStatement: ELIF ( expr ) { body }
+        @return: ElifNode
+        """
         right_node = None
         self.__expect_and_consume(TokenType.ELIF)
 
@@ -298,6 +349,10 @@ class Parser:
         return ElifNode(left_node, right_node)
 
     def parse_else(self):
+        """
+        ElseStatement: ELSE { body }
+        @return: BodyNode
+        """
         body = None
         self.__expect_and_consume(TokenType.ELSE)
 
@@ -311,6 +366,10 @@ class Parser:
         return body
 
     def parse_try_catch(self):
+        """
+        TryCatchStatement: TRY { body } CATCH { catchBody }
+        @return: TryCatchNode
+        """
         self.__expect_and_consume(TokenType.TRY)
 
         self.__expect_and_consume(TokenType.LBRACE)
@@ -330,7 +389,7 @@ class Parser:
 
     def parse_return(self):
         """
-        return: sayonara expr? ;
+        ReturnStatement: RETURN expr?
         @return: ReturnNode
         """
         self.__expect_and_consume(TokenType.RET)
@@ -344,6 +403,10 @@ class Parser:
         return return_node
 
     def parse_print(self):
+        """
+        PrintStatement: PRINT args
+        @return: PrintNode
+        """
         self.__expect_and_consume(TokenType.PRINT)
 
         self.debug_info("<Args>")
@@ -353,6 +416,10 @@ class Parser:
         return PrintNode(args)
 
     def parse_input(self):
+        """
+        InputStatement: INPUT (STR)?
+        @return: InputNode
+        """
         self.__expect_and_consume(TokenType.INPUT)
         self.__expect_and_consume(TokenType.LPAR)
 
@@ -364,6 +431,10 @@ class Parser:
         return InputNode(msg)
 
     def parse_args(self):
+        """
+        args: arg (',' arg)*
+        @return: ArgsNode
+        """
         args = ArgsNode()
 
         self.__expect_and_consume(TokenType.LPAR)
@@ -383,6 +454,10 @@ class Parser:
         return args
 
     def parse_arg(self):
+        """
+        arg: callable | expr
+        @return: CallNode | ExprNode
+        """
         if self.peek_token().type == TokenType.LPAR:
             self.debug_info("<Callable>")
             arg = self.parse_callable()
@@ -396,7 +471,7 @@ class Parser:
     def parse_callable(self):
         """
         callable: PRINT | INPUT | ID args
-        @return:
+        @return: PrintNode | InputNode | CallNode
         """
         call_node = None
         if self.match(TokenType.PRINT):
@@ -435,7 +510,7 @@ class Parser:
             right = self.parse_simple_expr()
             self.debug_info("</SimpleExpr>")
 
-            return ExprNode(left, op, right)
+            return ExprNode(left, RelOpNode(op), right)
         return ExprNode(left)
 
     def parse_simple_expr(self):
@@ -520,7 +595,7 @@ class Parser:
             self.__expect_and_consume(TokenType.STR)
 
         elif self.match(TokenType.TRUE) or self.match(TokenType.FALSE):
-            factor_node = FactorNode(BooleanLiteralNode(self.curr_tkn))
+            factor_node = FactorNode(BooleanOpNode(self.curr_tkn))
             if self.curr_tkn.type == TokenType.TRUE:
                 self.__expect_and_consume(TokenType.TRUE)
             else:
@@ -555,6 +630,12 @@ class Parser:
         return factor_node
 
     def parse(self, source_path, dflags):
+        """
+        Entry point for the parser
+        @param source_path: The Nyaa source code
+        @param dflags: Debug flags for the lexer and parser
+        @return: The AST of the Nyaa source code
+        """
         # Prepare lexer
         self.__lexer.load_src_file(source_path)
         self.__lexer.verbose(dflags.get("lexer", False))
