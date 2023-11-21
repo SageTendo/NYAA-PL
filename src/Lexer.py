@@ -119,6 +119,11 @@ class Lexer:
                 self._process_word(token)
             elif self.__ch.isdigit():
                 self._process_number(token)
+
+                # Check for float
+                if self.__ch == '.':
+                    self._next_char()
+                    self._process_float(token)
             elif self.__ch == '"':
                 self._next_char()
                 self._process_string(token)
@@ -231,10 +236,7 @@ class Lexer:
         self._next_char()
 
         # Continue processing while the current character is not an exit symbol
-        while True:
-            if self.__ch in EXIT_SYMBOLS:
-                break
-
+        while self.__ch not in EXIT_SYMBOLS and self.__ch != '.':
             # Calculate the numeric value of the next digit
             next_digit = ord(self.__ch) - ord('0')
 
@@ -251,6 +253,35 @@ class Lexer:
         # Set the token's value and type based on the processed number
         token.value = processed_number
         token.type = TokenType.INT
+
+    def _process_float(self, token):
+        # Initialize processed_number with the numeric value of the current character
+        processed_fraction = float(ord(self.__ch) - ord('0'))
+        divisor = 10
+
+        self._next_char()
+
+        # Continue processing while the current character is not an exit symbol
+        while self.__ch not in EXIT_SYMBOLS:
+            # Increase the divisor
+            divisor *= 10
+
+            # Calculate the numeric value of the next digit
+            next_digit = ord(self.__ch) - ord('0')
+
+            #  Check if valid digit
+            if next_digit < 0 or next_digit > 9:
+                throw_err(
+                    f"Unexpected character: '{self.__ch}' at "
+                    f"{self.__position.line_number}:{self.__column_number}")
+
+            # Append the next digit to processed number
+            processed_fraction = (processed_fraction * 10) + next_digit
+            self._next_char()
+
+        # Set the token's value and type based on the processed number
+        token.value = token.value + (processed_fraction / divisor)
+        token.type = TokenType.FLOAT
 
     def _process_string(self, token):
         processed_string = ""
