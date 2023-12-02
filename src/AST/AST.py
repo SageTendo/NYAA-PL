@@ -3,10 +3,13 @@ class Node:
         self.label = node_label
 
     def __repr__(self):
-        return self.label
+        return self.label.upper()
 
     def __str__(self):
         return f"{self.__repr__()}"
+
+    def accept(self, visitor):
+        return visitor.visit(self)
 
 
 class ConditionalNode(Node):
@@ -16,12 +19,12 @@ class ConditionalNode(Node):
         self.body = body
 
     def __repr__(self):
-        return f"{self.label}: {self.expr} {self.body}"
+        return f"{self.label.upper()}: {self.expr} {self.body}"
 
 
 class ProgramNode(Node):
     def __init__(self):
-        super().__init__("Program")
+        super().__init__("program")
 
         self.functions = []
         self.body = None
@@ -44,30 +47,30 @@ class ProgramNode(Node):
             functions = self.functions
         if self.body:
             body = self.body
-        return f"{self.label}: FuncDefs: {functions} {body}"
+        return f"{self.label.upper()}: FUNC_DEF: {functions} {body}"
 
 
 class FuncDefNode(Node):
     def __init__(self, identifier, args, body):
-        super().__init__("FuncDef")
+        super().__init__("func_def")
         self.identifier = identifier
         self.args = args
         self.body = body
 
     def __repr__(self):
-        return f"{self.label}: {self.identifier}({self.args}) {self.body}"
+        return f"{self.label.upper()}: {self.identifier}({self.args}) {self.body}"
 
 
 class BodyNode(Node):
     def __init__(self):
-        super().__init__("Body")
+        super().__init__("body")
         self.statements = []
 
     def append(self, statement):
         self.statements.append(statement)
 
     def __repr__(self):
-        return f"{self.label}: {self.statements}"
+        return f"{self.label.upper()}: {self.statements}"
 
     def __str__(self):
         return self.__repr__()
@@ -75,22 +78,22 @@ class BodyNode(Node):
 
 class PassNode(Node):
     def __init__(self):
-        super().__init__("Pass")
+        super().__init__("pass")
 
 
 class BreakNode(Node):
     def __init__(self):
-        super().__init__("Break")
+        super().__init__("break")
 
 
 class ContinueNode(Node):
     def __init__(self):
-        super().__init__("Continue")
+        super().__init__("continue")
 
 
 class ReturnNode(Node):
     def __init__(self):
-        super().__init__("Return")
+        super().__init__("return")
         self.expr = None
 
     def set_expr(self, expr):
@@ -98,18 +101,18 @@ class ReturnNode(Node):
 
     def __repr__(self):
         if self.expr:
-            return f"{self.label}: {self.expr}"
-        return f"{self.label}"
+            return f"{self.label.upper()}: {self.expr}"
+        return super().__repr__()
 
 
 class TryCatchNode(Node):
     def __init__(self, body, catch_body):
-        super().__init__("TryCatch")
+        super().__init__("try_catch")
         self.body = body
         self.catch_body = catch_body
 
     def __repr__(self):
-        return f"{self.label}: {self.body} | Catch: [{self.catch_body}]"
+        return f"{self.label.upper()}: [{self.body}] | Catch: [{self.catch_body}]"
 
 
 class ArgsNode(Node):
@@ -121,7 +124,7 @@ class ArgsNode(Node):
         self.children.append(argument)
 
     def __repr__(self):
-        return f"{self.label}: {self.children}"
+        return f"{self.label.upper()}: {self.children}"
 
 
 class CallNode(Node):
@@ -131,7 +134,7 @@ class CallNode(Node):
         self.right = args
 
     def __repr__(self):
-        return f"{self.label}: {self.left}({self.right})"
+        return f"{self.label.upper()}: {self.left}({self.right})"
 
 
 class InputNode(Node):
@@ -140,7 +143,7 @@ class InputNode(Node):
         self.message = msg
 
     def __repr__(self):
-        return f"{self.label}: {self.message}"
+        return f"{self.label.upper()}: {self.message}"
 
 
 class PrintNode(Node):
@@ -149,7 +152,7 @@ class PrintNode(Node):
         self.args = args
 
     def __repr__(self):
-        return f"{self.label}: {self.args}"
+        return f"{self.label.upper()}: {self.args}"
 
 
 class WhileNode(ConditionalNode):
@@ -171,7 +174,9 @@ class IfNode(ConditionalNode):
         self.else_body = body
 
     def __repr__(self):
-        return f"{self.label}: {self.expr} {self.body} | Elifs:{self.else_if_statements} | Else: {self.else_body}"
+        return (f"{self.label.upper()}: {self.expr} {self.body} |"
+                f" ELIFS:{self.else_if_statements} |"
+                f" ELSE: {self.else_body}")
 
 
 class ElifNode(ConditionalNode):
@@ -186,17 +191,17 @@ class ElseNode(ConditionalNode):
 
 class AssignmentNode(Node):
     def __init__(self, left, right):
-        super().__init__("Assignment")
+        super().__init__("assignment")
         self.left = left
         self.right = right
 
     def __repr__(self):
-        return f"{self.label}: {self.left} = {self.right}"
+        return f"{self.label.upper()}: {self.left} = {self.right}"
 
 
 class ExprNode(Node):
     def __init__(self, left, right=None, op=None):
-        super().__init__("Expr")
+        super().__init__("expr")
 
         self.left = left
         self.right = right
@@ -204,8 +209,8 @@ class ExprNode(Node):
 
     def __repr__(self):
         if self.op and self.right:
-            return f"{self.label}: {self.left} {self.op} {self.right}"
-        return f"{self.label}: {self.left}"
+            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
+        return f"{self.label.upper()}: {self.left}"
 
     def __str__(self):
         return self.__repr__()
@@ -213,86 +218,86 @@ class ExprNode(Node):
 
 class PostfixExprNode(Node):
     def __init__(self, left, op=None):
-        super().__init__('PostfixExpr')
+        super().__init__('postfix_expr')
         self.left = left
         self.op = op
 
     def __repr__(self):
-        return f"{self.label}: ({self.left}) {self.op}"
+        return f"{self.label.upper()}: ({self.left}) {self.op}"
 
 
 class SimpleExprNode(Node):
     def __init__(self):
-        super().__init__('SimpleExpr')
+        super().__init__('simple_expr')
         self.children = []
 
     def append(self, expr):
         self.children.append(expr)
 
     def __repr__(self):
-        return f"{self.label}: {self.children}"
+        return f"{self.label.upper()}: {self.children}"
 
 
 class TermNode(Node):
     def __init__(self):
-        super().__init__('Term')
+        super().__init__('term')
         self.children = []
 
     def append(self, term):
         self.children.append(term)
 
     def __repr__(self):
-        return f"{self.label}: {self.children}"
+        return f"{self.label.upper()}: {self.children}"
 
 
 class FactorNode(Node):
     def __init__(self, left, right=None):
-        super().__init__("Factor")
+        super().__init__("factor")
         self.left = left
         self.right = right
 
     def __repr__(self):
         if self.right:
-            return f"{self.label}: {self.left} {self.right}"
-        return f"{self.label}: {self.left}"
+            return f"{self.label.upper()}: {self.left} {self.right}"
+        return f"{self.label.upper()}: {self.left}"
 
 
 class IdentifierNode(Node):
     def __init__(self, token):
-        super().__init__("Identifier")
+        super().__init__("identifier")
         self.value = token.value
 
     def __repr__(self):
-        return f"{self.label}: {self.value}"
+        return f"{self.label.upper()}: {self.value}"
 
 
 class NumericLiteralNode(Node):
     def __init__(self, token):
-        super().__init__("NumericLiteral")
+        super().__init__("numeric_literal")
 
         self.type = token.type
         self.value = token.value
 
     def __repr__(self):
-        return f"{self.label}({self.type}): {self.value}"
+        return f"{self.label.upper()}({self.type}): {self.value}"
 
 
 class StringLiteralNode(Node):
     def __init__(self, token):
-        super().__init__("StringLiteral")
+        super().__init__("string_literal")
         self.value = token.value
 
     def __repr__(self):
-        return f"{self.label}: {self.value}"
+        return f"{self.label.upper()}: {self.value}"
 
 
 class BooleanOpNode(Node):
     def __init__(self, token):
-        super().__init__("BooleanLiteral")
+        super().__init__("boolean_literal")
         self.value = token.type
 
     def __repr__(self):
-        return f"{self.label}: {self.value}"
+        return f"{self.label.upper()}: {self.value}"
 
 
 class OperatorNode(Node):
@@ -302,30 +307,30 @@ class OperatorNode(Node):
 
     def __repr__(self):
         if self.value is None:
-            return f"{self.label}: None"
-        return f"{self.label}: {self.value}"
+            return f"{self.label.upper()}: None"
+        return f"{self.label.upper()}: {self.value}"
 
 
 class NegationNode(OperatorNode):
     def __init__(self):
-        super().__init__("Negation", "-")
+        super().__init__("negation", "-")
 
 
 class NotNode(OperatorNode):
     def __init__(self):
-        super().__init__("Complement", "not")
+        super().__init__("complement", "not")
 
 
 class AddOpNode(OperatorNode):
     def __init__(self, value):
-        super().__init__("AddOP", value)
+        super().__init__("add_op", value)
 
 
 class MulOpNode(OperatorNode):
     def __init__(self, value):
-        super().__init__("MulOp", value)
+        super().__init__("mul_op", value)
 
 
 class RelOpNode(OperatorNode):
     def __init__(self, value):
-        super().__init__("RelOp", value)
+        super().__init__("rel_op", value)
