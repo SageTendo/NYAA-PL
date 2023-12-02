@@ -1,9 +1,7 @@
 import argparse
 
-from src.utils.ErrorHandler import throw_err, ERROR, ENDC
-from src.Lexer import Lexer
-from src.Token import Token
-from src.Types import TokenType
+from src.Parser import Parser
+from src.utils.ErrorHandler import ERROR, ENDC
 
 
 def parse_args():
@@ -21,25 +19,20 @@ def parse_args():
 
     arg_parser = CustomArgParser()
     arg_parser.add_argument("src", type=str, help="The source file to translate")
+    arg_parser.add_argument(
+        '-l', '--lexer', action='store_true', default=False, help="Verbose mode for the lexer")
+    arg_parser.add_argument(
+        '-p', '--parser', action='store_true', default=False, help="Verbose mode for the parser")
+
     return arg_parser.parse_args()
 
 
-lexer = Lexer()
 if __name__ == '__main__':
     # Args parsing
     args = parse_args()
 
-    # Get source file
-    lexer.load_src_file(args.src)
-
-    # Processing
-    tkn = Token()  # placeholder token
-    while tkn.type != TokenType.ENDMARKER:
-        tkn = lexer.get_token()
-        if tkn.type is None:
-            line = lexer.get_line_number()
-            col = lexer.get_col_number()
-            char = lexer.get_last_read()
-            throw_err(f"Unrecognized symbol {char} found at {line}:{col}...")
-            exit(1)
-        print(tkn)
+    # Parse source code
+    parser = Parser()
+    dflags = {"lexer": args.lexer, "parser": args.parser}
+    AST = parser.parse(args.src, dflags)
+    print(AST)

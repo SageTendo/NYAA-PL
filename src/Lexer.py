@@ -1,30 +1,24 @@
-from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
-from src.utils.ErrorHandler import throw_err
 from src.Token import Token
 from src.Types import TokenType
+from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
+from src.utils.ErrorHandler import throw_err, throw_unexpected_char_err
 
 RESERVED_WORDS = {
-    "nyaa_main": TokenType.MAIN,
-    "printu": TokenType.PRINT,
+    "uWu_nyaa": TokenType.MAIN,
+    "purinto": TokenType.PRINT,
     "ohayo": TokenType.INPUT,
-    "daijobu": TokenType.WHILE,
-    "uWu": TokenType.FOR,
+    "daijoubu": TokenType.WHILE,
     "nani": TokenType.IF,
     "nandesuka": TokenType.ELIF,
     "baka": TokenType.ELSE,
-    'from': TokenType.RANGE,
     'yamete': TokenType.BREAK,
     'pasu': TokenType.PASS,
     'motto': TokenType.CONTINUE,
     'kawaii': TokenType.DEF,
     'ganbatte': TokenType.TRY,
-    'gome': TokenType.EXCEPT,
+    'gomenasai': TokenType.EXCEPT,
     'HAI': TokenType.TRUE,
     'IIE': TokenType.FALSE,
-    "inteja": TokenType.INT,
-    "sutoringu": TokenType.STR,
-    "furoto": TokenType.FLOAT,
-    "buru": TokenType.BOOL,
     'asain': TokenType.ASSIGN,
     "sayonara": TokenType.RET,
     'purasu': TokenType.PLUS,
@@ -42,7 +36,8 @@ EXIT_SYMBOLS = [' ', '\t', '\n',
                 ']', '+', '-',
                 '*', '/', '%',
                 '!', '<', '>',
-                '&', '|', ','
+                '&', '|', ',',
+                EOF
                 ]
 
 
@@ -51,6 +46,8 @@ class Lexer:
         def __init__(self, line_number, column_number):
             self.line_number = line_number
             self.column_number = column_number
+
+    __debug_mode = False
 
     def __init__(self):
         self.__program_file = []
@@ -61,6 +58,7 @@ class Lexer:
         self.__column_number = 0
         self.__line_number = 1
         self.__position = self._Position(1, 0)
+        self.__buffer = []
 
     def _next_char(self):
         """
@@ -95,8 +93,17 @@ class Lexer:
                 c = f.read(1)
         self._next_char()
 
+    def peek_token(self):
+        token = self.get_token()
+        self.__buffer.append(token)
+        return token
+
     def get_token(self):
         token = Token()
+
+        # Check if there are any tokens in the buffer
+        if len(self.__buffer) > 0:
+            return self.__buffer.pop(0)
 
         # Skip whitespace
         while self.__ch.isspace():
@@ -112,6 +119,11 @@ class Lexer:
                 self._process_word(token)
             elif self.__ch.isdigit():
                 self._process_number(token)
+
+                # Check for float
+                if self.__ch == '.':
+                    self._next_char()
+                    self._process_float(token)
             elif self.__ch == '"':
                 self._next_char()
                 self._process_string(token)
@@ -177,10 +189,13 @@ class Lexer:
                 elif self.__ch == ',':
                     token.type = TokenType.COMMA
                     self._next_char()
+                elif self.__ch == '.':
+                    token.type = TokenType.PERIOD
+                    self._next_char()
         else:
             token.type = TokenType.ENDMARKER
 
-        # return fetched token
+        self.validate(token)
         return token
 
     def _process_word(self, token):
@@ -211,7 +226,7 @@ class Lexer:
             return
 
         # Set token params
-        token.word = processed_word
+        token.value = processed_word
         token.type = TokenType.ID
 
     def _process_number(self, token):
@@ -221,10 +236,7 @@ class Lexer:
         self._next_char()
 
         # Continue processing while the current character is not an exit symbol
-        while True:
-            if self.__ch in EXIT_SYMBOLS:
-                break
-
+        while self.__ch not in EXIT_SYMBOLS and self.__ch != '.':
             # Calculate the numeric value of the next digit
             next_digit = ord(self.__ch) - ord('0')
 
@@ -242,6 +254,35 @@ class Lexer:
         token.value = processed_number
         token.type = TokenType.INT
 
+    def _process_float(self, token):
+        # Initialize processed_number with the numeric value of the current character
+        processed_fraction = float(ord(self.__ch) - ord('0'))
+        divisor = 10
+
+        self._next_char()
+
+        # Continue processing while the current character is not an exit symbol
+        while self.__ch not in EXIT_SYMBOLS:
+            # Increase the divisor
+            divisor *= 10
+
+            # Calculate the numeric value of the next digit
+            next_digit = ord(self.__ch) - ord('0')
+
+            #  Check if valid digit
+            if next_digit < 0 or next_digit > 9:
+                throw_err(
+                    f"Unexpected character: '{self.__ch}' at "
+                    f"{self.__position.line_number}:{self.__column_number}")
+
+            # Append the next digit to processed number
+            processed_fraction = (processed_fraction * 10) + next_digit
+            self._next_char()
+
+        # Set the token's value and type based on the processed number
+        token.value = token.value + (processed_fraction / divisor)
+        token.type = TokenType.FLOAT
+
     def _process_string(self, token):
         processed_string = ""
 
@@ -258,14 +299,12 @@ class Lexer:
                 elif self.__ch == '\\':
                     processed_string += '\\'
                 else:
-                    throw_err(
-                        f"Unexpected escape character: "
-                        f"'{self.__ch}' at {self.__position.line_number}:{self.__column_number}")
+                    throw_err(f"Unexpected escape character: "
+                              f"'{self.__ch}' at {self.__position.line_number}:{self.__column_number}")
 
             # Reached end of file
             if self.__ch == EOF:
-                throw_err(f"Unterminated string at "
-                          f"{self.__position.line_number}:{self.__position.column_number}")
+                throw_err(f"Unterminated string at {self.__position.line_number}:{self.__position.column_number}")
 
             # Check for Non-printables
             if not self.__ch.isprintable():
@@ -301,11 +340,23 @@ class Lexer:
     def get_last_read(self):
         return self.__last_read_ch
 
-    def get_curr(self):
-        return self.__ch
-
     def get_line_number(self):
         return self.__position.line_number
 
     def get_col_number(self):
         return self.__position.column_number
+
+    def debug_info(self, token):
+        if self.__debug_mode:
+            print(token)
+
+    def verbose(self, debug_mode=False):
+        self.__debug_mode = debug_mode
+
+    def validate(self, token):
+        if self.__debug_mode:
+            print(token)
+
+        if not token.type:
+            throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__position.column_number)
+        return token
