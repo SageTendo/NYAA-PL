@@ -52,9 +52,9 @@ elseStatement      : ELSE LBRACE body RBRACE;
 
 // Expressions
 postfixExpression  : ID (UN_ADD | UN_SUB);
-expression         : simple (relOperator simple)?;
-simple             : term (addOp term)*;
-term               : factor (mulOp factor)*;
+expression         : simple | simple relOperator expression;
+simple             : term | term addOp simple;
+term               : factor | factor mulOp term;
 factor             : NEG factor
                     |NOT factor
                     |LPAR expression RPAR

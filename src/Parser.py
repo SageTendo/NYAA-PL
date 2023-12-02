@@ -1,7 +1,6 @@
 from src.AST.AST import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, IdentifierNode, \
-    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanOpNode, NegationNode, \
-    FactorNode, NotNode, TermNode, MulOpNode, AddOpNode, ExprNode, CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, RelOpNode
+    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, CallNode, InputNode, BreakNode, ContinueNode, \
+    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, TermNode
 from src.Lexer import Lexer
 from src.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err
@@ -52,12 +51,54 @@ class Parser:
                 throw_unexpected_token_err(self.curr_tkn.type, expected_type, self.__lexer.get_line_number(),
                                            self.__lexer.get_col_number())
 
+    def __expect_and_consume_op(self):
+        """
+        Check the current token is of an operator type. Consume the token if it matches, otherwise throw an error
+        """
+        if TokenType.bin_op(self.curr_tkn) or TokenType.postfix(self.curr_tkn) or self.curr_tkn.type in [TokenType.NOT,
+                                                                                                         TokenType.NEG]:
+            self.consume_token()
+        else:
+            throw_unexpected_token_err(self.curr_tkn.type, "OP_TYPE", self.__lexer.get_line_number(),
+                                       self.__lexer.get_col_number())
+
     def consume_token(self):
         """
         Consumes the current token and prepares the next token to be parsed
         """
         self.debug_info(f"Consuming {self.curr_tkn}...", success=False)
         self.curr_tkn = self.__lexer.get_token()
+
+    def handle_op_token(self):
+        token_type = self.curr_tkn.type
+        self.__expect_and_consume_op()
+
+        if token_type == TokenType.PLUS:
+            return '+'
+        elif token_type in [TokenType.MINUS, TokenType.NEG]:
+            return '-'
+        elif token_type == TokenType.MULTIPLY:
+            return '*'
+        elif token_type == TokenType.DIVIDE:
+            return '/'
+        elif token_type == TokenType.AND:
+            return 'and'
+        elif token_type == TokenType.OR:
+            return 'or'
+        elif token_type == TokenType.NOT:
+            return 'not'
+        elif token_type == TokenType.LT:
+            return '<'
+        elif token_type == TokenType.GT:
+            return '>'
+        elif token_type == TokenType.LTE:
+            return '<='
+        elif token_type == TokenType.GTE:
+            return '>='
+        elif token_type == TokenType.EQ:
+            return '=='
+        elif token_type == TokenType.NEQ:
+            return '!='
 
     def parse_program(self):
         """
@@ -490,32 +531,32 @@ class Parser:
 
     def parse_expr(self):
         """
-        expr: simpleExpr (relationalOp simpleExpr)*
+        expr: simpleExpr | simpleExpr relationalOp expr
         @return: ExprNode
         """
+        expr_node = ExprNode()
+
         if not TokenType.expression(self.curr_tkn):
             throw_unexpected_token_err(
                 self.curr_tkn.type, "EXPRESSION_TYPE", self.__lexer.get_line_number(),
                 self.__lexer.get_col_number())
 
         self.debug_info("<SimpleExpr>")
-        left = self.parse_simple_expr()
+        expr_node.left = self.parse_simple_expr()
         self.debug_info("</SimpleExpr>")
 
         if TokenType.rel_op(self.curr_tkn):
-            op = self.curr_tkn.type
-            self.consume_token()
+            expr_node.op = self.handle_op_token()
 
-            self.debug_info("<SimpleExpr>")
-            right = self.parse_simple_expr()
-            self.debug_info("</SimpleExpr>")
+            self.debug_info("<Expr>")
+            expr_node.right = self.parse_expr()
+            self.debug_info("</Expr>")
 
-            return ExprNode(left, RelOpNode(op), right)
-        return ExprNode(left)
+        return expr_node
 
     def parse_simple_expr(self):
         """
-        simpleExpr: term (addOp term)*
+        simpleExpr: term | term addOp simpleExpr
         @return: SimpleExprNode
         """
         simple_expr = SimpleExprNode()
@@ -526,24 +567,21 @@ class Parser:
                 self.__lexer.get_col_number())
 
         self.debug_info("<Term>")
-        simple_expr.append(self.parse_term())
+        simple_expr.left = self.parse_term()
         self.debug_info("</Term>")
 
-        while TokenType.add_op(self.curr_tkn):
-            op = self.curr_tkn.type
-            self.consume_token()
+        if TokenType.add_op(self.curr_tkn):
+            simple_expr.op = self.handle_op_token()
 
-            self.debug_info("<Term>")
-            right_node = self.parse_term()
-            self.debug_info("</Term>")
+            self.debug_info("<SimpleExpr>")
+            simple_expr.right = self.parse_simple_expr()
+            self.debug_info("</SimpleExpr>")
 
-            simple_expr.append(AddOpNode(op))
-            simple_expr.append(right_node)
         return simple_expr
 
     def parse_term(self):
         """
-        term: ID | INT | INT '.' INT | STR | TRUE | FALSE | LPAR expr RPAR | NOT factor | NEG factor
+        term: factor | factor mulOp term
         @return: TermNode
         """
         term = TermNode()
@@ -553,19 +591,16 @@ class Parser:
                 self.__lexer.get_col_number())
 
         self.debug_info("<Factor>")
-        term.append(self.parse_factor())
+        term.left = self.parse_factor()
         self.debug_info("</Factor>")
 
-        while TokenType.mul_op(self.curr_tkn):
-            op = self.curr_tkn.type
-            self.consume_token()
+        if TokenType.mul_op(self.curr_tkn):
+            term.op = self.handle_op_token()
 
-            self.debug_info("<Factor>")
-            right_node = self.parse_factor()
-            self.debug_info("</Factor>")
+            self.debug_info("<Term>")
+            term.right = self.parse_term()
+            self.debug_info("</Term>")
 
-            term.append(MulOpNode(op))
-            term.append(right_node)
         return term
 
     def parse_factor(self):
@@ -595,7 +630,7 @@ class Parser:
             self.__expect_and_consume(TokenType.STR)
 
         elif self.match(TokenType.TRUE) or self.match(TokenType.FALSE):
-            factor_node = FactorNode(BooleanOpNode(self.curr_tkn))
+            factor_node = FactorNode(BooleanNode(self.curr_tkn))
             if self.curr_tkn.type == TokenType.TRUE:
                 self.__expect_and_consume(TokenType.TRUE)
             else:
@@ -610,18 +645,14 @@ class Parser:
             self.__expect_and_consume(TokenType.RPAR)
 
         elif self.match(TokenType.NOT):
-            self.__expect_and_consume(TokenType.NOT)
-
-            left_node = NotNode()
+            left_node = self.handle_op_token()
             self.debug_info("<Factor>")
             right_node = self.parse_factor()
             self.debug_info("</Factor>")
 
             return FactorNode(left_node, right_node)
         elif self.match(TokenType.NEG):
-            self.__expect_and_consume(TokenType.NEG)
-
-            left_node = NegationNode()
+            left_node = self.handle_op_token()
             self.debug_info("<Factor>")
             right_node = self.parse_factor()
             self.debug_info("</Factor>")

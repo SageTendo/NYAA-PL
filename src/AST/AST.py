@@ -9,6 +9,7 @@ class Node:
         return f"{self.__repr__()}"
 
     def accept(self, visitor):
+        print(f"Visiting {self.label}")
         return visitor.visit(self)
 
 
@@ -200,12 +201,12 @@ class AssignmentNode(Node):
 
 
 class ExprNode(Node):
-    def __init__(self, left, right=None, op=None):
+    def __init__(self):
         super().__init__("expr")
 
-        self.left = left
-        self.right = right
-        self.op = op
+        self.left = None
+        self.right = None
+        self.op = None
 
     def __repr__(self):
         if self.op and self.right:
@@ -229,25 +230,27 @@ class PostfixExprNode(Node):
 class SimpleExprNode(Node):
     def __init__(self):
         super().__init__('simple_expr')
-        self.children = []
-
-    def append(self, expr):
-        self.children.append(expr)
+        self.left = None
+        self.right = None
+        self.op = None
 
     def __repr__(self):
-        return f"{self.label.upper()}: {self.children}"
+        if self.op and self.right:
+            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
+        return f"{self.label.upper()}: {self.left}"
 
 
 class TermNode(Node):
     def __init__(self):
         super().__init__('term')
-        self.children = []
-
-    def append(self, term):
-        self.children.append(term)
+        self.left = None
+        self.right = None
+        self.op = None
 
     def __repr__(self):
-        return f"{self.label.upper()}: {self.children}"
+        if self.op and self.right:
+            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
+        return f"{self.label.upper()}: {self.left}"
 
 
 class FactorNode(Node):
@@ -291,46 +294,10 @@ class StringLiteralNode(Node):
         return f"{self.label.upper()}: {self.value}"
 
 
-class BooleanOpNode(Node):
+class BooleanNode(Node):
     def __init__(self, token):
         super().__init__("boolean_literal")
         self.value = token.type
 
     def __repr__(self):
         return f"{self.label.upper()}: {self.value}"
-
-
-class OperatorNode(Node):
-    def __init__(self, label, value):
-        super().__init__(label)
-        self.value = value
-
-    def __repr__(self):
-        if self.value is None:
-            return f"{self.label.upper()}: None"
-        return f"{self.label.upper()}: {self.value}"
-
-
-class NegationNode(OperatorNode):
-    def __init__(self):
-        super().__init__("negation", "-")
-
-
-class NotNode(OperatorNode):
-    def __init__(self):
-        super().__init__("complement", "not")
-
-
-class AddOpNode(OperatorNode):
-    def __init__(self, value):
-        super().__init__("add_op", value)
-
-
-class MulOpNode(OperatorNode):
-    def __init__(self, value):
-        super().__init__("mul_op", value)
-
-
-class RelOpNode(OperatorNode):
-    def __init__(self, value):
-        super().__init__("rel_op", value)
