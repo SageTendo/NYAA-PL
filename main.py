@@ -1,7 +1,9 @@
 import argparse
+import sys
 
+from src.Interpreter import Interpreter
 from src.Parser import Parser
-from src.utils.ErrorHandler import ERROR, ENDC
+from src.repl.Repl import Repl
 
 
 def parse_args():
@@ -11,14 +13,15 @@ def parse_args():
     """
 
     class CustomArgParser(argparse.ArgumentParser):
-        def error(self, message):
-            if 'src' in message:
-                print(f"{ERROR}No program file was provided...\n")
-            print(f"Usage: python3 {__file__} <PROGRAM> {ENDC}")
-            exit(1)
+        # def error(self, message):
+        #     print(f"Usage: python3 {__file__} <PROGRAM> {ENDC}")
+        #     exit(1)
+        pass
 
     arg_parser = CustomArgParser()
-    arg_parser.add_argument("src", type=str, help="The source file to translate")
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        arg_parser.add_argument("src", type=str, help="The source file to translate")
+
     arg_parser.add_argument(
         '-l', '--lexer', action='store_true', default=False, help="Verbose mode for the lexer")
     arg_parser.add_argument(
@@ -30,9 +33,17 @@ def parse_args():
 if __name__ == '__main__':
     # Args parsing
     args = parse_args()
-
-    # Parse source code
     parser = Parser()
+    interpreter = Interpreter()
     dflags = {"lexer": args.lexer, "parser": args.parser}
-    AST = parser.parse(args.src, dflags)
-    print(AST)
+
+    if 'src' not in args:
+        # REPL mode
+        Repl(parser, interpreter).run(dflags=dflags)
+    else:
+        # Parse source code
+        AST = parser.parse_source(source_path=args.src, dflags=dflags)
+        print(AST)
+
+        # Start interpreter
+        interpreter.interpret(AST)

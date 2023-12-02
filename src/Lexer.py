@@ -83,6 +83,15 @@ class Lexer:
                 c = f.read(1)
         self._next_char()
 
+    def analyze_repl(self, repl_input):
+        """
+        Reads in the REPL input for tokenization
+        @param repl_input: the REPL input to be tokenized
+        """
+        self.__init__()
+        self.__program_file = list(repl_input)
+        self._next_char()
+
     def peek_token(self):
         token = self.get_token()
         self.__buffer.append(token)

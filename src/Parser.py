@@ -1,5 +1,6 @@
 from src.AST.AST import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, IdentifierNode, \
-    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, CallNode, InputNode, BreakNode, ContinueNode, \
+    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
+    CallNode, InputNode, BreakNode, ContinueNode, \
     WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, TermNode
 from src.Lexer import Lexer
 from src.Types import TokenType
@@ -660,23 +661,50 @@ class Parser:
             return FactorNode(left_node, right_node)
         return factor_node
 
-    def parse(self, source_path, dflags):
+    def parse_repl(self):
+        if self.match(TokenType.ENDMARKER):
+            return None
+
+        if self.match(TokenType.DEF):
+            return self.parse_func_def()
+
+        if TokenType.statement_start(self.curr_tkn):
+            return self.parse_body()
+
+        if TokenType.expression(self.curr_tkn):
+            return self.parse_expr()
+
+    def parse_source(self, source_path=None, repl_input=None, dflags=None):
         """
         Entry point for the parser
+        @param repl_input: The REPL input
         @param source_path: The Nyaa source code
         @param dflags: Debug flags for the lexer and parser
         @return: The AST of the Nyaa source code
         """
-        # Prepare lexer
-        self.__lexer.load_src_file(source_path)
+        if dflags is None:
+            dflags = {}
         self.__lexer.verbose(dflags.get("lexer", False))
-
-        # Parse source code
         self.__debug_mode = dflags.get("parser", False)
 
-        self.debug_info("<Program>")
-        self.consume_token()
-        ast = self.parse_program()
-        self.debug_info("</Program>")
+        # Prepare lexer
+        if source_path:
+            self.__lexer.analyze_src_file(source_path)
+            self.consume_token()
 
-        return ast
+            # Parse source code
+            self.debug_info("<Program>")
+            ast = self.parse_program()
+            self.debug_info("</Program>")
+            return ast
+        elif repl_input:
+            self.__lexer.analyze_repl(repl_input)
+            self.consume_token()
+
+            # Parse REPL input
+            self.debug_info("<Repl>")
+            repl_node = self.parse_repl()
+            self.debug_info("</Repl>")
+            return repl_node
+        else:
+            raise Exception("Either source_path or repl_input must be provided")
