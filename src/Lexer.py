@@ -30,16 +30,6 @@ RESERVED_WORDS = {
     'nai': TokenType.NOT
 }
 
-EXIT_SYMBOLS = [' ', '\t', '\n',
-                '(', ')', ':',
-                ';', '=', '[',
-                ']', '+', '-',
-                '*', '/', '%',
-                '!', '<', '>',
-                '&', '|', ',',
-                EOF
-                ]
-
 
 class Lexer:
     class _Position:
@@ -81,7 +71,7 @@ class Lexer:
             # End of file reached
             self.__ch = EOF
 
-    def load_src_file(self, file_path):
+    def analyze_src_file(self, file_path):
         """
         Reads in the source file for tokenization
         @param file_path: the path to the source file
@@ -203,7 +193,7 @@ class Lexer:
 
         # Read word
         while True:
-            if self.__ch in EXIT_SYMBOLS:
+            if not (self.__ch.isalnum() or self.__ch == '_'):
                 break
 
             # Check for valid characters
@@ -236,7 +226,7 @@ class Lexer:
         self._next_char()
 
         # Continue processing while the current character is not an exit symbol
-        while self.__ch not in EXIT_SYMBOLS and self.__ch != '.':
+        while self.__ch.isdigit():
             # Calculate the numeric value of the next digit
             next_digit = ord(self.__ch) - ord('0')
 
@@ -262,7 +252,7 @@ class Lexer:
         self._next_char()
 
         # Continue processing while the current character is not an exit symbol
-        while self.__ch not in EXIT_SYMBOLS:
+        while self.__ch.isdigit():
             # Increase the divisor
             divisor *= 10
 
