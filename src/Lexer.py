@@ -1,7 +1,8 @@
 from src.Token import Token
 from src.Types import TokenType
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
-from src.utils.ErrorHandler import throw_err, throw_unexpected_char_err
+from src.utils.ErrorHandler import throw_unexpected_char_err, throw_identifier_length_err, \
+    throw_unexpected_escape_char_err, throw_non_printable_char_err, throw_unexpected_eof_err, throw_string_length_err
 
 RESERVED_WORDS = {
     "uWu_nyaa": TokenType.MAIN,
@@ -207,14 +208,10 @@ class Lexer:
 
             # Check for valid characters
             if not self.__ch.isalnum() and self.__ch != '_':
-                throw_err(
-                    f"Unexpected character: '{self.__ch}' at "
-                    f"{self.__position.line_number}:{self.__column_number}")
-
+                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
             # Validate length of word
             if len(processed_word) + 1 == MAX_ID_LEN:
-                throw_err(f"Identifier too long: {processed_word}")
-
+                throw_identifier_length_err(self.__position.line_number, self.__column_number)
             # Append character to word and ge the next character
             processed_word += self.__ch
             self._next_char()
@@ -241,10 +238,7 @@ class Lexer:
 
             #  Check if valid digit
             if next_digit < 0 or next_digit > 9:
-                throw_err(
-                    f"Unexpected character: '{self.__ch}' at "
-                    f"{self.__position.line_number}:{self.__column_number}")
-
+                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
             # Append the next digit to processed number
             processed_number = (processed_number * 10) + next_digit
             self._next_char()
@@ -270,9 +264,7 @@ class Lexer:
 
             #  Check if valid digit
             if next_digit < 0 or next_digit > 9:
-                throw_err(
-                    f"Unexpected character: '{self.__ch}' at "
-                    f"{self.__position.line_number}:{self.__column_number}")
+                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
 
             # Append the next digit to processed number
             processed_fraction = (processed_fraction * 10) + next_digit
@@ -298,23 +290,17 @@ class Lexer:
                 elif self.__ch == '\\':
                     processed_string += '\\'
                 else:
-                    throw_err(f"Unexpected escape character: "
-                              f"'{self.__ch}' at {self.__position.line_number}:{self.__column_number}")
-
+                    throw_unexpected_escape_char_err(self.__ch, self.__position.line_number, self.__column_number)
             # Reached end of file
             if self.__ch == EOF:
-                throw_err(f"Unterminated string at {self.__position.line_number}:{self.__position.column_number}")
+                throw_unexpected_eof_err(self.__position.line_number, self.__column_number)
 
             # Check for Non-printables
             if not self.__ch.isprintable():
-                throw_err(
-                    f"Non-printable ascii character with code: "
-                    f"{ord(self.__ch)} at {self.__position.line_number}:{self.__column_number}")
-
+                throw_non_printable_char_err(self.__ch, self.__position.line_number, self.__column_number)
             # Max string length reached
             if len(processed_string) + 1 > MAX_STR_LEN:
-                throw_err(f"String too long at "
-                          f"{self.__position.line_number}:{self.__position.column_number}")
+                throw_string_length_err(self.__position.line_number, self.__column_number)
 
             # Concat char to string and get next character
             processed_string += self.__ch

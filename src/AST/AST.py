@@ -9,7 +9,6 @@ class Node:
         return f"{self.__repr__()}"
 
     def accept(self, visitor):
-        print(f"Visiting {self.label}")
         return visitor.visit(self)
 
 
@@ -261,7 +260,7 @@ class FactorNode(Node):
 
     def __repr__(self):
         if self.right:
-            return f"{self.label.upper()}: {self.left} {self.right}"
+            return f"{self.label.upper()}: [{self.left}, {self.right}]"
         return f"{self.label.upper()}: {self.left}"
 
 
@@ -300,4 +299,15 @@ class BooleanNode(Node):
         self.value = token.type
 
     def __repr__(self):
+        return f"{self.label.upper()}: {self.value}"
+
+
+class OperatorNode(Node):
+    def __init__(self, value):
+        super().__init__("operator")
+        self.value = value
+
+    def __repr__(self):
+        if self.value is None:
+            return f"{self.label.upper()}: None"
         return f"{self.label.upper()}: {self.value}"

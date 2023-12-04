@@ -55,8 +55,8 @@ postfixExpression  : ID (UN_ADD | UN_SUB);
 expression         : simple | simple relOperator expression;
 simple             : term | term addOp simple;
 term               : factor | factor mulOp term;
-factor             : NEG factor
-                    |NOT factor
+factor             : NEG arithFactor
+                    |NOT boolFactor
                     |LPAR expression RPAR
                     |ID
                     |TRUE
@@ -64,6 +64,9 @@ factor             : NEG factor
                     |INT_CONSTANT
                     |FLOAT_CONSTANT
                     |STR_CONSTANT;
+arithFactor         : NEG arithFactor | ID | INT_CONSTANT | FLOAT_CONSTANT;
+boolFactor          : NOT boolFactor  | ID | INT_CONSTANT | FLOAT_CONSTANT | STR_CONSTANT | TRUE | FALSE;
+
 
 addOp              : PLUS | MINUS | OR;
 mulOp              : AND | DIVIDE | MULTIPLY;
