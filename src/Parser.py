@@ -1,7 +1,7 @@
 from src.AST.AST import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, IdentifierNode, \
     PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
     CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, TermNode
+    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, TermNode, OperatorNode
 from src.Lexer import Lexer
 from src.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err
@@ -76,8 +76,10 @@ class Parser:
 
         if token_type == TokenType.PLUS:
             return '+'
-        elif token_type in [TokenType.MINUS, TokenType.NEG]:
+        elif token_type == TokenType.MINUS:
             return '-'
+        elif token_type == TokenType.NEG:
+            return OperatorNode('-')
         elif token_type == TokenType.MULTIPLY:
             return '*'
         elif token_type == TokenType.DIVIDE:
@@ -87,7 +89,7 @@ class Parser:
         elif token_type == TokenType.OR:
             return 'or'
         elif token_type == TokenType.NOT:
-            return 'not'
+            return OperatorNode('not')
         elif token_type == TokenType.LT:
             return '<'
         elif token_type == TokenType.GT:
@@ -669,6 +671,8 @@ class Parser:
             return self.parse_func_def()
 
         if TokenType.statement_start(self.curr_tkn):
+            if TokenType.bin_op(self.peek_token()):
+                return self.parse_expr()
             return self.parse_body()
 
         if TokenType.expression(self.curr_tkn):

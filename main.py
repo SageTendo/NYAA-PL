@@ -43,7 +43,6 @@ if __name__ == '__main__':
     else:
         # Parse source code
         AST = parser.parse_source(source_path=args.src, dflags=dflags)
-        print(AST)
 
         # Start interpreter
         interpreter.interpret(AST)

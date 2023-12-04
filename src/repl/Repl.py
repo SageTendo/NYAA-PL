@@ -1,3 +1,5 @@
+import sys
+
 from src.utils.ErrorHandler import SUCCESS, ENDC
 
 
@@ -7,15 +9,17 @@ class Repl:
         self.interpreter = interpreter
 
     def run(self, dflags=None):
-        print(f"{SUCCESS}Ohayo!!!\n"
-              f"Welcome to the Nyaa REPL! (◕‿◕✿) Type 'yamete()' to exit. (｡♥‿♥｡)\n{ENDC}")
+        print(f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
+              f"Welcome to the Nyaa REPL! Type 'yamete()' to exit. (｡♥‿♥｡)\n{ENDC}")
 
         while True:
             line = self.handle_input()
             AST = self.parser.parse_source(repl_input=line, dflags=dflags)
-            print(AST)
 
-            print(self.interpreter.interpret(AST))
+            try:
+                self.interpreter.interpret(AST)
+            except Exception as e:
+                print(e, '\n', file=sys.stderr)
 
     @staticmethod
     def handle_input():
