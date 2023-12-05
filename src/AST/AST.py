@@ -1,15 +1,39 @@
+import json
+
+
 class Node:
     def __init__(self, node_label):
         self.label = node_label
 
-    def __repr__(self):
-        return self.label.upper()
-
-    def __str__(self):
-        return f"{self.__repr__()}"
-
     def accept(self, visitor):
         return visitor.visit(self)
+
+    def to_json(self):
+        node_map = self.__dict__.copy()
+        for k, v in node_map.items():
+            if v is None:
+                node_map[k] = "null"
+            if v is True:
+                node_map[k] = "true"
+            if v is False:
+                node_map[k] = "false"
+
+            if isinstance(v, list):
+                node_map[k] = []
+                for item in v:
+                    node_map[k].append(item.to_json())
+
+            if isinstance(v, dict):
+                node_map[k] = {}
+                for key, value in v.items():
+                    node_map[k][key] = value.to_json()
+
+            if isinstance(v, Node):
+                node_map[k] = v.to_json()
+        return node_map
+
+    def encode_json(self):
+        return json.dumps(self.to_json(), indent=2)
 
 
 class ConditionalNode(Node):
@@ -17,9 +41,6 @@ class ConditionalNode(Node):
         super().__init__(label)
         self.expr = expr
         self.body = body
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.expr} {self.body}"
 
 
 class ProgramNode(Node):
@@ -39,16 +60,6 @@ class ProgramNode(Node):
     def set_body(self, body):
         self.body = body
 
-    def __repr__(self):
-        functions = "[]"
-        body = "[]"
-
-        if self.functions:
-            functions = self.functions
-        if self.body:
-            body = self.body
-        return f"{self.label.upper()}: FUNC_DEF: {functions} {body}"
-
 
 class FuncDefNode(Node):
     def __init__(self, identifier, args, body):
@@ -56,9 +67,6 @@ class FuncDefNode(Node):
         self.identifier = identifier
         self.args = args
         self.body = body
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.identifier}({self.args}) {self.body}"
 
 
 class BodyNode(Node):
@@ -68,12 +76,6 @@ class BodyNode(Node):
 
     def append(self, statement):
         self.statements.append(statement)
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.statements}"
-
-    def __str__(self):
-        return self.__repr__()
 
 
 class PassNode(Node):
@@ -99,20 +101,12 @@ class ReturnNode(Node):
     def set_expr(self, expr):
         self.expr = expr
 
-    def __repr__(self):
-        if self.expr:
-            return f"{self.label.upper()}: {self.expr}"
-        return super().__repr__()
-
 
 class TryCatchNode(Node):
     def __init__(self, body, catch_body):
         super().__init__("try_catch")
         self.body = body
         self.catch_body = catch_body
-
-    def __repr__(self):
-        return f"{self.label.upper()}: [{self.body}] | Catch: [{self.catch_body}]"
 
 
 class ArgsNode(Node):
@@ -123,36 +117,24 @@ class ArgsNode(Node):
     def append(self, argument):
         self.children.append(argument)
 
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.children}"
-
 
 class CallNode(Node):
     def __init__(self, identifier, args):
         super().__init__("call")
-        self.left = identifier
-        self.right = args
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.left}({self.right})"
+        self.identifier = identifier
+        self.args = args
 
 
 class InputNode(Node):
-    def __init__(self, msg):
+    def __init__(self, msg=None):
         super().__init__("input")
-        self.message = msg
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.message}"
+        self.message = msg if msg else ""
 
 
 class PrintNode(Node):
     def __init__(self, args):
         super().__init__("print")
         self.args = args
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.args}"
 
 
 class WhileNode(ConditionalNode):
@@ -173,11 +155,6 @@ class IfNode(ConditionalNode):
     def set_else_body(self, body):
         self.else_body = body
 
-    def __repr__(self):
-        return (f"{self.label.upper()}: {self.expr} {self.body} |"
-                f" ELIFS:{self.else_if_statements} |"
-                f" ELSE: {self.else_body}")
-
 
 class ElifNode(ConditionalNode):
     def __init__(self, expr, body):
@@ -195,9 +172,6 @@ class AssignmentNode(Node):
         self.left = left
         self.right = right
 
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.left} = {self.right}"
-
 
 class ExprNode(Node):
     def __init__(self):
@@ -207,23 +181,12 @@ class ExprNode(Node):
         self.right = None
         self.op = None
 
-    def __repr__(self):
-        if self.op and self.right:
-            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
-        return f"{self.label.upper()}: {self.left}"
-
-    def __str__(self):
-        return self.__repr__()
-
 
 class PostfixExprNode(Node):
     def __init__(self, left, op=None):
         super().__init__('postfix_expr')
         self.left = left
         self.op = op
-
-    def __repr__(self):
-        return f"{self.label.upper()}: ({self.left}) {self.op}"
 
 
 class SimpleExprNode(Node):
@@ -233,11 +196,6 @@ class SimpleExprNode(Node):
         self.right = None
         self.op = None
 
-    def __repr__(self):
-        if self.op and self.right:
-            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
-        return f"{self.label.upper()}: {self.left}"
-
 
 class TermNode(Node):
     def __init__(self):
@@ -246,11 +204,6 @@ class TermNode(Node):
         self.right = None
         self.op = None
 
-    def __repr__(self):
-        if self.op and self.right:
-            return f"{self.label.upper()}: {self.left} {self.op} {self.right}"
-        return f"{self.label.upper()}: {self.left}"
-
 
 class FactorNode(Node):
     def __init__(self, left, right=None):
@@ -258,19 +211,11 @@ class FactorNode(Node):
         self.left = left
         self.right = right
 
-    def __repr__(self):
-        if self.right:
-            return f"{self.label.upper()}: [{self.left}, {self.right}]"
-        return f"{self.label.upper()}: {self.left}"
-
 
 class IdentifierNode(Node):
     def __init__(self, token):
         super().__init__("identifier")
         self.value = token.value
-
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.value}"
 
 
 class NumericLiteralNode(Node):
@@ -280,8 +225,11 @@ class NumericLiteralNode(Node):
         self.type = token.type
         self.value = token.value
 
-    def __repr__(self):
-        return f"{self.label.upper()}({self.type}): {self.value}"
+    def to_json(self):
+        return {
+            "type": str(self.type),
+            "value": str(self.value)
+        }
 
 
 class StringLiteralNode(Node):
@@ -289,25 +237,19 @@ class StringLiteralNode(Node):
         super().__init__("string_literal")
         self.value = token.value
 
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.value}"
-
 
 class BooleanNode(Node):
     def __init__(self, token):
         super().__init__("boolean_literal")
         self.value = token.type
 
-    def __repr__(self):
-        return f"{self.label.upper()}: {self.value}"
+    def to_json(self):
+        return {
+            "value": str(self.value)
+        }
 
 
 class OperatorNode(Node):
     def __init__(self, value):
         super().__init__("operator")
         self.value = value
-
-    def __repr__(self):
-        if self.value is None:
-            return f"{self.label.upper()}: None"
-        return f"{self.label.upper()}: {self.value}"

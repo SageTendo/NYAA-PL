@@ -10,20 +10,27 @@ class Repl:
 
     def run(self, dflags=None):
         print(f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
-              f"Welcome to the Nyaa REPL! Type 'yamete()' to exit. (｡♥‿♥｡)\n{ENDC}")
+              f"Welcome to the NYAA REPL! Type 'yamete()' to exit. (｡♥‿♥｡)\n{ENDC}")
 
         while True:
             line = self.handle_input()
-            AST = self.parser.parse_source(repl_input=line, dflags=dflags)
+            if len(line) == 0:
+                continue
 
             try:
+                AST = self.parser.parse_source(repl_input=line, dflags=dflags)
+
                 self.interpreter.interpret(AST)
             except Exception as e:
-                print(e, '\n', file=sys.stderr)
+                print(e.with_traceback(None), '\n', file=sys.stderr)
 
     @staticmethod
     def handle_input():
-        line = str(input("REPL> "))
+        try:
+            line = str(input("REPL> "))
+        except KeyboardInterrupt:
+            print()
+            exit(0)
 
         # Exit
         if line == "yamete()":
