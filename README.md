@@ -17,8 +17,9 @@ uWu_nyaa() => purinto("Hello, world!");
 ##### Greet.ny  
 ```  
 # function definition  
-kawaii greet(name) {  
- purinto("Hello,", name)}  
+kawaii greet(name) {
+	purinto("Hello,", name)
+}  
   
 # program block  
 uWu_nyaa() => {  
