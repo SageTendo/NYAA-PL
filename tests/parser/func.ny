@@ -1,8 +1,8 @@
-kawaii add(x, y) => {
-    sayonara x purasu y
+kawaii add() => {
+    sayonara 2 purasu 3
 }
 
 uWu_nyaa() => {
-    a asain add(1, 1)
+    a asain add()
     purinto(a)
 }

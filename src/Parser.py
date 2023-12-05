@@ -56,8 +56,7 @@ class Parser:
         """
         Check the current token is of an operator type. Consume the token if it matches, otherwise throw an error
         """
-        if TokenType.bin_op(self.curr_tkn) or TokenType.postfix(self.curr_tkn) or self.curr_tkn.type in [TokenType.NOT,
-                                                                                                         TokenType.NEG]:
+        if TokenType.bin_op(self.curr_tkn) or TokenType(self.curr_tkn.type):
             self.consume_token()
         else:
             throw_unexpected_token_err(self.curr_tkn.type, "OP_TYPE", self.__lexer.get_line_number(),
@@ -227,7 +226,7 @@ class Parser:
         @return: FuncDefNode
         """
         self.__expect_and_consume(TokenType.DEF)
-        identifier = self.curr_tkn
+        identifier = self.curr_tkn.value
         self.__expect_and_consume(TokenType.ID)
 
         args = None
@@ -258,7 +257,7 @@ class Parser:
         funcCall: ID args
         @return: CallNode
         """
-        identifier = self.curr_tkn
+        identifier = self.curr_tkn.value
         self.__expect_and_consume(TokenType.ID)
 
         self.debug_info("<Args>")
@@ -277,10 +276,10 @@ class Parser:
         op = self.curr_tkn.type
         if op == TokenType.UN_ADD:
             self.__expect_and_consume(TokenType.UN_ADD)
+            return PostfixExprNode(left_node, "++")
         elif op == TokenType.UN_SUB:
             self.__expect_and_consume(TokenType.UN_SUB)
-
-        return PostfixExprNode(left_node, op)
+            return PostfixExprNode(left_node, "--")
 
     def parse_assignment(self):
         """
@@ -667,16 +666,19 @@ class Parser:
         if self.match(TokenType.ENDMARKER):
             return None
 
-        if self.match(TokenType.DEF):
+        elif self.match(TokenType.DEF):
             return self.parse_func_def()
 
-        if TokenType.statement_start(self.curr_tkn):
+        elif TokenType.statement_start(self.curr_tkn):
             if TokenType.bin_op(self.peek_token()):
                 return self.parse_expr()
             return self.parse_body()
 
-        if TokenType.expression(self.curr_tkn):
+        elif TokenType.expression(self.curr_tkn):
             return self.parse_expr()
+        else:
+            throw_unexpected_token_err(self.curr_tkn.type, "EXPR / STATEMENT_TOKENS / DEFINE",
+                                       self.__lexer.get_line_number(), self.__lexer.get_col_number())
 
     def parse_source(self, source_path=None, repl_input=None, dflags=None):
         """
