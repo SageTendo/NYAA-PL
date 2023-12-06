@@ -2,7 +2,7 @@ from src.AST.AST import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, Si
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
     AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode
 from src.SymbolTable import SymbolTable
-from src.utils.ErrorHandler import throw_unary_type_err, throw_not_implemented_err
+from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err
 
 
 class RunTimeObject:
@@ -11,10 +11,13 @@ class RunTimeObject:
         self.value = value
         self.type = value_type
 
+    def copy(self):
+        return RunTimeObject(self.label, self.value, self.type)
+
     def __repr__(self):
         if self.type is None:
-            return f"{self.label.upper()}: {self.value}"
-        return f"{self.label.upper()}: ({self.type}){self.value}"
+            return f"RuntimeObject<{self.label.upper()}: {self.value}>"
+        return f"RuntimeObject<{self.label.upper()}: ({self.type}){self.value}>"
 
 
 class Interpreter:
@@ -23,17 +26,16 @@ class Interpreter:
         self.stack_pointer = 0
 
     def interpret(self, ast):
-        ast.accept(self)
-        print()
+        return ast.accept(self)
 
     def visit(self, node):
         method = f"visit_{node.label}"
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node)
 
-    def handle_runtime_value(self, runtime_value: 'RunTimeObject'):
+    def handle_runtime_object(self, runtime_value: 'RunTimeObject'):
         if runtime_value.label == "identifier":
-            return self.symbol_table.get_identifier(runtime_value.value)
+            return self.symbol_table.get_variable(runtime_value.value)
         else:
             return runtime_value.value
 
@@ -70,7 +72,7 @@ class Interpreter:
         return res
 
     def visit_pass(self, node: 'PassNode'):
-        pass
+        return
 
     def visit_return(self, node: 'ReturnNode'):
         if node.expr:
@@ -84,7 +86,12 @@ class Interpreter:
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
-        self.symbol_table.add_identifier(lhs.value, rhs.value)
+
+        if rhs.label == "identifier":
+            # Get variable and make a copy of its runtime object
+            rhs = self.symbol_table.get_variable(rhs.value).copy()
+        self.symbol_table.add_variable(lhs.value, rhs)
+        return rhs
 
     def visit_call(self, node: 'CallNode'):
         """
@@ -116,8 +123,9 @@ class Interpreter:
             # Store values of args
             arg_values = []
             for arg in args:
-                arg_runtime_value = self.handle_runtime_value(arg)
-                arg_values.append(arg_runtime_value)
+                if arg.label == "identifier":  # Get value from symbol table for variables
+                    arg = self.symbol_table.get_variable(arg.value)
+                arg_values.append(arg)
 
             # Create a local symbol table
             self.symbol_table = old_table.copy()
@@ -125,7 +133,7 @@ class Interpreter:
             # Assign args to params (setting local vars)
             for param in params:
                 arg_runtime_value = arg_values.pop(0)
-                self.symbol_table.add_identifier(param, arg_runtime_value)
+                self.symbol_table.add_variable(param, arg_runtime_value)
 
         # Visit function body
         result = self.symbol_table.get_function_body(identifier).accept(self).pop(0)
@@ -148,19 +156,27 @@ class Interpreter:
     def visit_print(self, node: 'PrintNode'):
         args = node.args.accept(self)
         for arg in args:
-            value = self.handle_runtime_value(arg)
-            print(value, end=' ')
+            runtime_value = self.handle_runtime_object(arg)
+
+            # Convert RunTimeObject to value if necessary
+            # (Variable values are stored as RunTimeObjects)
+            if isinstance(runtime_value, RunTimeObject):
+                runtime_value = self.handle_runtime_object(runtime_value)
+            print(runtime_value, end=' ')
         print()
 
     def visit_postfix_expr(self, node: 'PostfixExprNode'):
         lhs = node.left.accept(self)
-        curr_value = self.handle_runtime_value(lhs)
 
+        # Variable value is stored as RunTimeObject
+        runtime_object = self.handle_runtime_object(lhs)
+
+        # Increment or decrement variable value
         if node.op == "++":
-            self.symbol_table.set_identifier(lhs.value, curr_value + 1)
+            runtime_object.value += 1
         elif node.op == '--':
-            self.symbol_table.set_identifier(lhs.value, curr_value - 1)
-        return RunTimeObject("number", self.symbol_table.get_identifier(lhs.value))
+            runtime_object.value -= 1
+        return RunTimeObject("number", runtime_object.value)
 
     def visit_args(self, node: 'ArgsNode'):
         args = []
@@ -183,56 +199,78 @@ class Interpreter:
         if node.op:
             right = node.right.accept(self)
 
-            if node.op == "+":
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("number", left.value + right.value)
+            # Get runtime objects of left and right nodes, if they are identifier nodes
+            if left.label == 'identifier':
+                left = self.symbol_table.get_variable(left.value)
+            if right.label == 'identifier':
+                right = self.symbol_table.get_variable(right.value)
 
-                # String concatenation
-                if left.label == "string" and right.label == "string":
-                    return RunTimeObject("string", left.value + right.value)
-            elif node.op == "-":
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("number", left.value - right.value)
-            elif node.op == "*":
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("number", left.value * right.value)
-            elif node.op == "/":
-                if left.label == "number" and right.label == "number":
-                    if right.value == 0:
-                        raise ZeroDivisionError("Runtime error: Division by zero")
-                    return RunTimeObject("number", left.value / right.value)
-            elif node.op == 'and':
-                if left.label == "boolean" and right.label == "boolean":
-                    return RunTimeObject("boolean", left.value and right.value)
-            elif node.op == 'or':
-                if left.label == "boolean" and right.label == "boolean":
-                    return RunTimeObject("boolean", left.value or right.value)
-            elif node.op == '<':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value < right.value)
-            elif node.op == '>':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value > right.value)
-            elif node.op == '<=':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value <= right.value)
-            elif node.op == '>=':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value >= right.value)
-            elif node.op == '==':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value == right.value)
+            # Handle operation
+            if node.op in ["+", "-", 'or']:
+                return self.handle_additive_expressions(left, right, node.op)
+            elif node.op in ["*", "/", 'and']:
+                return self.handle_multiplicative_expressions(left, right, node.op)
+            elif node.op in ["==", "!=", "<", ">", "<=", ">="]:
+                return self.handle_relational_expressions(left, right, node.op)
 
-                if left.label == "string" and right.label == "string":
-                    return RunTimeObject("boolean", left.value == right.value)
-            elif node.op == '!=':
-                if left.label == "number" and right.label == "number":
-                    return RunTimeObject("boolean", left.value != right.value)
-
-                if left.label == "string" and right.label == "string":
-                    return RunTimeObject("boolean", left.value != right.value)
-            throw_not_implemented_err(f"Expr: {left.value} {node.op} {right.value}", -1, -1)
+            # Invalid operation
+            throw_invalid_operation_err(left.value, node.op, right.value)
         return left
+
+    @staticmethod
+    def handle_additive_expressions(left, right, op):
+        if op == "+":
+
+            if left.label == "string" and left.label == right.label:  # String concat
+                return RunTimeObject("string", left.value + right.value)
+            elif left.label == "number" and left.label == right.label:
+                return RunTimeObject("number", left.value + right.value)
+        elif op == "-":
+
+            if left.label == "number" and left.label == right.label:
+                return RunTimeObject("number", left.value - right.value)
+        elif op == 'or':
+            return RunTimeObject(left.label, left.value or right.value)
+
+        # Invalid operation
+        throw_invalid_operation_err(left.value, op, right.value)
+
+    @staticmethod
+    def handle_multiplicative_expressions(left, right, op):
+        if op == "*":
+
+            if ((left.label == "string" and right.label == "number")
+                    or (left.label == "number" and right.label == "string")):
+                return RunTimeObject("string", left.value * right.value)
+            elif left.label == "number" and left.label == right.label:
+                return RunTimeObject("number", left.value * right.value)
+        elif op == "/":
+
+            if left.label == "number" and left.label == right.label:
+                if right.value == 0:
+                    raise ZeroDivisionError("Runtime error: Division by zero")
+                return RunTimeObject("number", left.value / right.value)
+        elif op == 'and':
+            return RunTimeObject(right.label, left.value and right.value)
+
+        # Invalid operation
+        throw_invalid_operation_err(left.value, op, right.value)
+
+    @staticmethod
+    def handle_relational_expressions(left, right, op):
+        if left.label == "string" and right.label == "number":
+
+            res = eval(f"{len(left.value)} {op} {right.value}")
+            return RunTimeObject("boolean", res)
+        elif left.label == right.label:
+            if left.label == "string":
+                res = eval(f'"{left.value}" {op} "{right.value}"')
+            else:
+                res = eval(f"{left.value} {op} {right.value}")
+            return RunTimeObject("boolean", res)
+
+        # Invalid operation
+        throw_invalid_operation_err(left.value, op, right.value)
 
     def visit_factor(self, node: 'FactorNode'):
         left = node.left.accept(self)

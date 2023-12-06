@@ -20,14 +20,20 @@ class Repl:
             try:
                 AST = self.parser.parse_source(repl_input=line, dflags=dflags)
 
-                self.interpreter.interpret(AST)
+                res = self.interpreter.interpret(AST)
+                if isinstance(res, list):
+                    for r in res:
+                        if r:
+                            print(r, "\n")
+                elif res:
+                    print(res, "\n")
             except Exception as e:
                 print(e.with_traceback(None), '\n', file=sys.stderr)
 
     @staticmethod
     def handle_input():
         try:
-            line = str(input("REPL> "))
+            line = str(input(">> "))
         except KeyboardInterrupt:
             print()
             exit(0)

@@ -91,18 +91,6 @@ def throw_unexpected_token_err(token_type, expected_type, line_number, col_numbe
 # ----------------------------------------------------------------------------------------------------------------------
 # Semantic errors
 
-
-def throw_not_implemented_err(code, line_number, col_number):
-    """
-    Throws an error when an unsupported feature is used
-    @param code        : The unsupported type
-    @param line_number : The line number of the unsupported type
-    @param col_number  : The column number of the unsupported type
-    """
-    raise __throw_err(f"Semantic error\n"
-                      f"Unsupported feature |{code}| at {line_number}:{col_number}")
-
-
 def throw_unary_type_err(operator, operand):
     """
     Throws an error when an unsupported unary type is parsed
@@ -113,8 +101,21 @@ def throw_unary_type_err(operator, operand):
                       f"Unsupported unary type for {operator}: {operand}")
 
 
+def throw_invalid_operation_err(lhs, op, rhs):
+    """
+    Throws an exception when an invalid operation is performed
+    @param lhs: LHS value
+    @param op: operator
+    @param rhs: RHS value
+    """
+    raise __throw_err("Type error\n"
+                      f"Invalid operation {lhs} {op} {rhs}")
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Basic Errors
+
+
 def __throw_err(msg):
     """
     Simple error handling with coloured text
