@@ -12,7 +12,8 @@ class Node:
         node_map = self.__dict__.copy()
         for k, v in node_map.items():
             if v is None:
-                node_map[k] = "null"
+                continue
+
             if v is True:
                 node_map[k] = "true"
             if v is False:
@@ -21,12 +22,14 @@ class Node:
             if isinstance(v, list):
                 node_map[k] = []
                 for item in v:
-                    node_map[k].append(item.to_json())
+                    if item:
+                        node_map[k].append(item.to_json())
 
             if isinstance(v, dict):
                 node_map[k] = {}
                 for key, value in v.items():
-                    node_map[k][key] = value.to_json()
+                    if value:
+                        node_map[k][key] = value.to_json()
 
             if isinstance(v, Node):
                 node_map[k] = v.to_json()
@@ -239,9 +242,9 @@ class StringLiteralNode(Node):
 
 
 class BooleanNode(Node):
-    def __init__(self, token):
+    def __init__(self, boolean_value):
         super().__init__("boolean_literal")
-        self.value = token.type
+        self.value = boolean_value
 
     def to_json(self):
         return {

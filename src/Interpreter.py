@@ -1,8 +1,14 @@
+import sys
+
 from src.AST.AST import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode
+    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode
 from src.SymbolTable import SymbolTable
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err
+
+MAX_VISIT_DEPTH = 5470
+INTERNAL_RECURSION_LIMIT = 780
+SYS_RECURSION_LIMIT = 1000000
 
 
 class RunTimeObject:
@@ -16,22 +22,57 @@ class RunTimeObject:
 
     def __repr__(self):
         if self.type is None:
-            return f"RuntimeObject<{self.label.upper()}: {self.value}>"
-        return f"RuntimeObject<{self.label.upper()}: ({self.type}){self.value}>"
+            return f"RuntimeObject({self.label}) = {self.value}"
+        return f"RuntimeObject({self.label} | {self.type}) = {self.value}"
 
 
 class Interpreter:
     def __init__(self):
+        # Safety nets
+        self.__visitor_dept = 0
+        self.func_call_count = 0
+        self.conditional_flag = False
+        sys.setrecursionlimit(SYS_RECURSION_LIMIT)
+
         self.symbol_table = SymbolTable()
-        self.stack_pointer = 0
 
     def interpret(self, ast):
-        return ast.accept(self)
+        """
+        Interprets the given abstract syntax tree
+        @param ast: The abstract syntax tree to interpret
+        @return: The last runtime object returned by the program
+        """
+        try:
+            return ast.accept(self)
+        except RecursionError:
+            print(
+                "Error: (´｡• ω •｡`) Visitor depth exceeded! "
+                "You've ventured too far into the code jungle. "
+                "Time to retreat before you're lost in the wild recursion! "
+                "(¬‿¬)")
+            exit(1)
 
     def visit(self, node):
-        method = f"visit_{node.label}"
-        visitor = getattr(self, method, self.generic_visit)
-        return visitor(node)
+        """
+        Gets the name of the visitor method and calls it on the node passed in as an argument
+        @param node: The node to visit
+        @return: The result of the visitor method
+        """
+        if self.__visitor_dept >= MAX_VISIT_DEPTH:
+            # visitor depth exceeded and an error should be thrown
+            # to prevent the Python interpreter from a segfault
+            raise RecursionError
+
+        try:
+            self.__visitor_dept += 1
+            method = f"visit_{node.label}"
+            visitor = getattr(self, method, self.generic_visit)(node)
+            self.__visitor_dept -= 1
+            return visitor
+        except RecursionError as e:
+            # Recursion depth exceeded by user defined functions
+            print(e)
+            exit()
 
     def handle_runtime_object(self, runtime_value: 'RunTimeObject'):
         if runtime_value.label == "identifier":
@@ -66,17 +107,45 @@ class Interpreter:
         self.symbol_table.add_function_props(node.identifier, function_props)
 
     def visit_body(self, node: 'BodyNode'):
-        res = []
+        # FIXME: Body nodes outside of conditional statements should not be visited if the condition is not met
+        last_stmt = RunTimeObject('null', None)
         for stmt in node.statements:
-            res.append(stmt.accept(self))
-        return res
+            if stmt.label == 'return':
+                return stmt.accept(self)
+            last_stmt = stmt.accept(self)
+
+            # conditional flag to break out of loop when condition is met
+            if self.conditional_flag:
+                break
+        self.conditional_flag = False
+        return last_stmt
 
     def visit_pass(self, node: 'PassNode'):
-        return
+        node.accept(self)
+        return RunTimeObject("null", None)
 
     def visit_return(self, node: 'ReturnNode'):
         if node.expr:
             return node.expr.accept(self)
+        return RunTimeObject("null", None)
+
+    def visit_if(self, node: 'IfNode'):
+        expr = node.expr.accept(self)
+
+        self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
+        if expr.value and node.body:  # Handle if statement
+            return node.body.accept(self)
+        elif node.else_if_statements:  # Handle elif statements
+
+            for else_if_stmt in node.else_if_statements:
+                expr = else_if_stmt.expr.accept(self)
+
+                if expr.value and else_if_stmt.body:
+                    return else_if_stmt.body.accept(self)
+        elif node.else_body:  # Handle else statement
+            return node.else_body.accept(self)
+
+        self.conditional_flag = False  # Reset conditional flag when not condition is met
         return RunTimeObject("null", None)
 
     def visit_assignment(self, node: 'AssignmentNode'):
@@ -99,10 +168,11 @@ class Interpreter:
         @param node: The function call node to visit
         """
         # Check for stack overflow
-        if self.stack_pointer > 160:
-            self.stack_pointer = 0
-            raise RecursionError("Max recursion depth reached...")
-        self.stack_pointer += 1
+        self.func_call_count += 1
+        if self.func_call_count > INTERNAL_RECURSION_LIMIT:
+            self.func_call_count = 0
+            raise RecursionError("(╬ Ò﹏Ó) Ara Ara! Interpreter recursion depth exceeded, "
+                                 "that's not very kawaii of you... (◡﹏◡✿)")
 
         # Store current symbol table
         old_table = self.symbol_table
@@ -136,10 +206,10 @@ class Interpreter:
                 self.symbol_table.add_variable(param, arg_runtime_value)
 
         # Visit function body
-        result = self.symbol_table.get_function_body(identifier).accept(self).pop(0)
+        result = self.symbol_table.get_function_body(identifier).accept(self)
 
-        # Restore previous symbol table and stack_pointer
-        self.stack_pointer -= 1
+        # Restore previous symbol table and func_call_count
+        self.func_call_count -= 1
         self.symbol_table = old_table
         return result
 
@@ -164,6 +234,7 @@ class Interpreter:
                 runtime_value = self.handle_runtime_object(runtime_value)
             print(runtime_value, end=' ')
         print()
+        return RunTimeObject("null", None)
 
     def visit_postfix_expr(self, node: 'PostfixExprNode'):
         lhs = node.left.accept(self)
@@ -199,7 +270,7 @@ class Interpreter:
         if node.op:
             right = node.right.accept(self)
 
-            # Get runtime objects of left and right nodes, if they are identifier nodes
+            # Get runtime object for left and right node, if they are identifier nodes
             if left.label == 'identifier':
                 left = self.symbol_table.get_variable(left.value)
             if right.label == 'identifier':
@@ -310,6 +381,10 @@ class Interpreter:
     @staticmethod
     def visit_string_literal(node: 'StringLiteralNode'):
         return RunTimeObject("string", node.value)
+
+    @staticmethod
+    def visit_boolean_literal(node: 'BooleanNode'):
+        return RunTimeObject("boolean", node.value)
 
     @staticmethod
     def generic_visit(node):
