@@ -1,8 +1,9 @@
 kawaii greet(name) => {
-    purinto("Hello, ", name, "!")
-    purinto("How are you today?")
+    yomu("Hello,", name, "!")
+    yomu("How are you today?")
 }
 
 uWu_nyaa() => {
-    greet("Nyaa-chan")
+    a wa "nyaa"
+    greet(a)
 }

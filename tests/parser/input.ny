@@ -1,4 +1,4 @@
 uWu_nyaa() => {
-    name asain ohayo("Enter your name: ")
-    purinto("Ohayo,", name, "!")
+    name wa ohayo("Enter your name: ")
+    yomu("Ohayo,", name, "!")
 }

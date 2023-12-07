@@ -26,12 +26,12 @@ class TokenType(Enum):
     PASS = auto()  # pasu
     CONTINUE = auto()  # motto
     BREAK = auto()  # yamete
-    RET = auto()  # sayonara
+    RET = auto()  # modoru
 
     # Dependent statements
     ELIF = auto()  # elif
     ELSE = auto()  # else
-    ASSIGN = auto()  # asain
+    ASSIGN = auto()  # wa
     EXCEPT = auto()  # gome
 
     # Non-alphabetic operators
@@ -97,8 +97,8 @@ class TokenType(Enum):
         return cls.factor(token)
 
     @classmethod
-    def factor(cls, curr_tkn):
-        return curr_tkn.type in [
+    def factor(cls, token):
+        return token.type in [
             TokenType.ID, TokenType.INT, TokenType.STR,
             TokenType.FLOAT, TokenType.TRUE, TokenType.FALSE,
             TokenType.LPAR, TokenType.NEG, TokenType.NOT
@@ -127,11 +127,11 @@ class TokenType(Enum):
             TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.AND
         ]
 
-    def __str__(self):
-        return self.name
-
     @classmethod
-    def callable(cls, curr_tkn):
-        return curr_tkn.type in [
+    def callable(cls, token):
+        return token.type in [
             TokenType.ID, TokenType.PRINT, TokenType.INPUT
         ]
+
+    def __str__(self):
+        return self.name

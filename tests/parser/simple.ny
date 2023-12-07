@@ -1,3 +1,3 @@
 uWu_nyaa() => {
-    sayonara
+    modoru
 }

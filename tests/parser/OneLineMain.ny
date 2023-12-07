@@ -1,1 +1,1 @@
-uWu_nyaa() => sayonara 2;
+uWu_nyaa() => modoru 2;

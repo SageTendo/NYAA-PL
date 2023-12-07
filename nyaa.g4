@@ -52,11 +52,11 @@ elseStatement      : ELSE LBRACE body RBRACE;
 
 // Expressions
 postfixExpression  : ID (UN_ADD | UN_SUB);
-expression         : simple (relOperator simple)?;
-simple             : term (addOp term)*;
-term               : factor (mulOp factor)*;
-factor             : NEG factor
-                    |NOT factor
+expression         : simple | simple relOperator expression;
+simple             : term | term addOp simple;
+term               : factor | factor mulOp term;
+factor             : NEG arithFactor
+                    |NOT boolFactor
                     |LPAR expression RPAR
                     |ID
                     |TRUE
@@ -64,6 +64,9 @@ factor             : NEG factor
                     |INT_CONSTANT
                     |FLOAT_CONSTANT
                     |STR_CONSTANT;
+arithFactor         : NEG arithFactor | ID | INT_CONSTANT | FLOAT_CONSTANT;
+boolFactor          : NOT boolFactor  | ID | INT_CONSTANT | FLOAT_CONSTANT | STR_CONSTANT | TRUE | FALSE;
+
 
 addOp              : PLUS | MINUS | OR;
 mulOp              : AND | DIVIDE | MULTIPLY;
@@ -77,7 +80,7 @@ ME: 'me';
 SENPAI: 'senpai';
 
 MAIN : 'uWu_nyaa';
-PRINT : 'purinto';
+PRINT : 'yomu';
 INPUT : 'ohayo';
 WHILE : 'daijoubu';
 FOR : 'uWu';
@@ -93,8 +96,8 @@ TRY: 'ganbatte';
 EXCEPT: 'gomenasai';
 TRUE: 'HAI';
 FALSE: 'IIE';
-RET : 'sayonara';
-ASSIGN : 'asain';
+RET : 'modoru';
+ASSIGN : 'wa';
 PLUS : 'purasu';
 MINUS : 'mainasu';
 MULTIPLY : 'purodakuto';

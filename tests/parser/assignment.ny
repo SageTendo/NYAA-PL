@@ -1,3 +1,3 @@
 uWu_nyaa() => {
-    name asain "Nyaa-chan"
+    name wa "Nyaa-chan"
 }
