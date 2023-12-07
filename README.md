@@ -11,20 +11,20 @@ intended for real-world use.
 ##### Hello_World.ny (single statement body)  
 ```  
 # program block  
-uWu_nyaa() => purinto("Hello, world!");  
+uWu_nyaa() => yomu("Hello, world!");  
 ```  
   
 ##### Greet.ny  
 ```  
 # function definition  
 kawaii greet(name) {
-	purinto("Hello,", name)
+	yomu("Hello,", name)
 }  
   
 # program block  
 uWu_nyaa() => {  
 	# Get input from user and assign it to name
-	name asain ohayo("Enter name: ") 
+	name wa ohayo("Enter name: ") 
 	greet(name)
  }  
 ```  

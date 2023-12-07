@@ -26,12 +26,12 @@ class TokenType(Enum):
     PASS = auto()  # pasu
     CONTINUE = auto()  # motto
     BREAK = auto()  # yamete
-    RET = auto()  # sayonara
+    RET = auto()  # modoru
 
     # Dependent statements
     ELIF = auto()  # elif
     ELSE = auto()  # else
-    ASSIGN = auto()  # asain
+    ASSIGN = auto()  # wa
     EXCEPT = auto()  # gome
 
     # Non-alphabetic operators

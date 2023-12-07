@@ -607,7 +607,7 @@ class Parser:
 
     def parse_factor(self):
         """
-        factor: ID | INT | INT '.' INT | STR | TRUE | FALSE | LPAR expr RPAR | NOT factor | NEG factor
+        factor: ID | INT | INT '.' INT | STR | TRUE | FALSE | LPAR expr RPAR | NOT factor | NEG factor | Func_Call
         @return: FactorNode
         """
         factor_node = None
@@ -617,8 +617,14 @@ class Parser:
                 self.__lexer.get_col_number())
 
         if self.match(TokenType.ID):
-            factor_node = FactorNode(IdentifierNode(self.curr_tkn))
-            self.__expect_and_consume(TokenType.ID)
+
+            # Check if it is a function call
+            if self.peek_token().type == TokenType.LPAR:
+                factor_node = self.parse_func_call()
+            else:
+                # Check if it is an identifier
+                factor_node = FactorNode(IdentifierNode(self.curr_tkn))
+                self.__expect_and_consume(TokenType.ID)
 
         elif self.match(TokenType.INT) or self.match(TokenType.FLOAT):
             factor_node = FactorNode(NumericLiteralNode(self.curr_tkn))
@@ -632,11 +638,13 @@ class Parser:
             self.__expect_and_consume(TokenType.STR)
 
         elif self.match(TokenType.TRUE) or self.match(TokenType.FALSE):
-            factor_node = FactorNode(BooleanNode(self.curr_tkn))
+
             if self.curr_tkn.type == TokenType.TRUE:
                 self.__expect_and_consume(TokenType.TRUE)
+                factor_node = FactorNode(BooleanNode(True))
             else:
                 self.__expect_and_consume(TokenType.FALSE)
+                factor_node = FactorNode(BooleanNode(False))
 
         elif self.match(TokenType.LPAR):
             self.__expect_and_consume(TokenType.LPAR)
@@ -647,6 +655,7 @@ class Parser:
             self.__expect_and_consume(TokenType.RPAR)
 
         elif self.match(TokenType.NOT):
+
             left_node = self.handle_op_token()
             self.debug_info("<Factor>")
             right_node = self.parse_factor()
@@ -654,6 +663,7 @@ class Parser:
 
             return FactorNode(left_node, right_node)
         elif self.match(TokenType.NEG):
+
             left_node = self.handle_op_token()
             self.debug_info("<Factor>")
             right_node = self.parse_factor()

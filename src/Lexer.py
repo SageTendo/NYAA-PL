@@ -6,7 +6,7 @@ from src.utils.ErrorHandler import throw_unexpected_char_err, throw_identifier_l
 
 RESERVED_WORDS = {
     "uWu_nyaa": TokenType.MAIN,
-    "purinto": TokenType.PRINT,
+    "yomu": TokenType.PRINT,
     "ohayo": TokenType.INPUT,
     "daijoubu": TokenType.WHILE,
     "nani": TokenType.IF,
@@ -20,8 +20,8 @@ RESERVED_WORDS = {
     'gomenasai': TokenType.EXCEPT,
     'HAI': TokenType.TRUE,
     'IIE': TokenType.FALSE,
-    'asain': TokenType.ASSIGN,
-    "sayonara": TokenType.RET,
+    'wa': TokenType.ASSIGN,
+    "modoru": TokenType.RET,
     'purasu': TokenType.PLUS,
     'mainasu': TokenType.MINUS,
     'purodakuto': TokenType.MULTIPLY,
@@ -41,7 +41,7 @@ class Lexer:
     __debug_mode = False
 
     def __init__(self):
-        self.__program_file = []
+        self.__program = []
         self.__program_counter = 0
 
         self.__ch = None
@@ -62,8 +62,8 @@ class Lexer:
             self.__column_number = 0
 
         # Check if there are still characters to be processed in the program file
-        if self.__program_counter != len(self.__program_file):
-            self.__ch = self.__program_file[self.__program_counter]
+        if self.__program_counter != len(self.__program):
+            self.__ch = self.__program[self.__program_counter]
 
             self.__last_read_ch = self.__ch
             self.__column_number += 1
@@ -80,7 +80,7 @@ class Lexer:
         with open(file_path, "r") as f:
             c = f.read(1)
             while c:
-                self.__program_file.append(c)
+                self.__program.append(c)
                 c = f.read(1)
         self._next_char()
 
@@ -90,7 +90,7 @@ class Lexer:
         @param repl_input: the REPL input to be tokenized
         """
         self.__init__()
-        self.__program_file = list(repl_input)
+        self.__program = list(repl_input)
         self._next_char()
 
     def peek_token(self):
@@ -153,12 +153,16 @@ class Lexer:
                         self._next_char()
                 elif self.__ch == '+':
                     self._next_char()
+
+                    # Check for unary plus
                     if self.__ch == '+':
                         token.type = TokenType.UN_ADD
                         self._next_char()
                 elif self.__ch == '-':
                     token.type = TokenType.NEG
                     self._next_char()
+
+                    # Check for unary minus
                     if self.__ch == '-':
                         token.type = TokenType.UN_SUB
                         self._next_char()
@@ -189,13 +193,13 @@ class Lexer:
                 elif self.__ch == ',':
                     token.type = TokenType.COMMA
                     self._next_char()
-                elif self.__ch == '.':
-                    token.type = TokenType.PERIOD
-                    self._next_char()
+                else:
+                    throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
         else:
             token.type = TokenType.ENDMARKER
 
-        self.validate(token)
+        if self.__debug_mode:
+            print(token)
         return token
 
     def _process_word(self, token):
@@ -337,11 +341,3 @@ class Lexer:
 
     def verbose(self, debug_mode=False):
         self.__debug_mode = debug_mode
-
-    def validate(self, token):
-        if self.__debug_mode:
-            print(token)
-
-        if not token.type:
-            throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__position.column_number)
-        return token

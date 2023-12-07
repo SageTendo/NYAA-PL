@@ -2,11 +2,11 @@
 # please notice me numpy.class.func senpai
 
 kawaii add(x, y) => {
-    sayonara x purasu y
+    modoru x purasu y
 }
 
 kawaii add(x, y) => {
-    sayonara x purasu y
+    modoru x purasu y
 }
 
 kawaii test() => {
@@ -17,51 +17,51 @@ kawaii test() => {
 
 
 uWu_nyaa() => {
-    purinto(add(x, y))
-    purinto("hello", "world!")
-    purinto(a purasu b)
-    purinto(a++)
-    namae a asain 3.2
-    namae b asain 4
-    namae c asain nai a
-    namae a asain -a
+    yomu(add(x, y))
+    yomu("hello", "world!")
+    yomu(a purasu b)
+    yomu(a++)
+    namae a wa 3.2
+    namae b wa 4
+    namae c wa nai a
+    namae a wa -a
 
     print(a ando nai b)
 
     a++
-    namae a asain (a purasu b)
+    namae a wa (a purasu b)
     ohayo("hello")
     b--
-    namae B asain a++
-    purinto(HAI)
-    purinto(IIE)
-    namae a asain a == b
+    namae B wa a++
+    yomu(HAI)
+    yomu(IIE)
+    namae a wa a == b
 
-    namae name asain ohayo("User: ")
-    namae age asain ohayo()
+    namae name wa ohayo("User: ")
+    namae age wa ohayo()
 
     uWu i from(0, 1) {
-        purinto(i)
-        purinto()
+        yomu(i)
+        yomu()
     }
 
     nani (test) {
-        purinto()
+        yomu()
         add()
     } nandesuka (nai test) {
-        purinto()
+        yomu()
     } baka {
         lol()
     }
 
     ganbatte {
-        purinto("TRY")
+        yomu("TRY")
     }
     gomenasai {
-        purinto("ERR")
+        yomu("ERR")
     }
 
     daijoubu (HAI) {
-        purinto()
+        yomu()
     }
 }

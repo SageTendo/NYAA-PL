@@ -1,3 +1,3 @@
 uWu_nyaa() => {
-   purinto("Ohayo!")
+   yomu("Ohayo!")
 }

@@ -1,8 +1,8 @@
 uWu_nyaa() => {
-    test asain HAI
+    test wa HAI
 
     nani (test) {
     } nandesuka (nai test) {
-        purinto(IIE)
+        yomu(IIE)
     }
 }

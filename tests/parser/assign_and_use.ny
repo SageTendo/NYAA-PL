@@ -1,4 +1,4 @@
 uWu_nyaa() => {
-    name asain "Nyaa-chan"
-    purinto(name)
+    name wa "Nyaa-chan"
+    yomu(name)
 }
