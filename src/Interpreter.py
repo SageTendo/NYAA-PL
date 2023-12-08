@@ -129,7 +129,7 @@ class Interpreter(AComponent):
     def visit_if(self, node: 'IfNode'):
         expr = node.expr.accept(self)
 
-        # self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
+        self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
         if expr.value and node.body:  # Handle if statement
             return node.body.accept(self)
         elif node.else_if_statements:  # Handle elif statements
