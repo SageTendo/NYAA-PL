@@ -1,40 +1,28 @@
 import sys
 
-from src.AST.AST import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
+from src.core.AComponent import AComponent
+from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode
-from src.SymbolTable import SymbolTable
-from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err
+    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode
+from src.core.RuntimeObject import RunTimeObject
+from src.core.SymbolTable import SymbolTable
+from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg
 
 MAX_VISIT_DEPTH = 5470
 INTERNAL_RECURSION_LIMIT = 780
 SYS_RECURSION_LIMIT = 1000000
 
 
-class RunTimeObject:
-    def __init__(self, label, value, value_type=None):
-        self.label = label
-        self.value = value
-        self.type = value_type
-
-    def copy(self):
-        return RunTimeObject(self.label, self.value, self.type)
-
-    def __repr__(self):
-        if self.type is None:
-            return f"RuntimeObject({self.label}) = {self.value}"
-        return f"RuntimeObject({self.label} | {self.type}) = {self.value}"
-
-
-class Interpreter:
+class Interpreter(AComponent):
     def __init__(self):
+        super().__init__()
+        self.symbol_table = SymbolTable()
+
         # Safety nets
         self.__visitor_dept = 0
         self.func_call_count = 0
         self.conditional_flag = False
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
-
-        self.symbol_table = SymbolTable()
 
     def interpret(self, ast):
         """
@@ -44,12 +32,9 @@ class Interpreter:
         """
         try:
             return ast.accept(self)
-        except RecursionError:
+        except RecursionError as e:
             print(
-                "Error: (´｡• ω •｡`) Visitor depth exceeded! "
-                "You've ventured too far into the code jungle. "
-                "Time to retreat before you're lost in the wild recursion! "
-                "(¬‿¬)")
+                "Visitor Error (´｡• ω •｡`):", e, file=sys.stderr)
             exit(1)
 
     def visit(self, node):
@@ -61,18 +46,30 @@ class Interpreter:
         if self.__visitor_dept >= MAX_VISIT_DEPTH:
             # visitor depth exceeded and an error should be thrown
             # to prevent the Python interpreter from a segfault
-            raise RecursionError
+            raise RecursionError(
+                "Visitor depth exceeded! You've ventured too far into the code jungle. "
+                "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
         try:
             self.__visitor_dept += 1
             method = f"visit_{node.label}"
+
+            self.debug(warning_msg(f"Visiting {node.label}"))
             visitor = getattr(self, method, self.generic_visit)(node)
+            self.debug(success_msg(f"Returned --> {node.label}: {visitor}"))
+
             self.__visitor_dept -= 1
             return visitor
         except RecursionError as e:
             # Recursion depth exceeded by user defined functions
-            print(e)
-            exit()
+            print("Recursion Error:", e, file=sys.stderr)
+            exit(1)
+        except NotImplementedError as e:
+            # visit method not implemented
+            print("Visit Error:", e, file=sys.stderr)
+            exit(1)
+        except TypeError as e:
+            print("Type Error: (╬ Ò﹏Ó)", e, file=sys.stderr)
 
     def handle_runtime_object(self, runtime_value: 'RunTimeObject'):
         if runtime_value.label == "identifier":
@@ -132,7 +129,7 @@ class Interpreter:
     def visit_if(self, node: 'IfNode'):
         expr = node.expr.accept(self)
 
-        self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
+        # self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
         if expr.value and node.body:  # Handle if statement
             return node.body.accept(self)
         elif node.else_if_statements:  # Handle elif statements
@@ -147,6 +144,14 @@ class Interpreter:
 
         self.conditional_flag = False  # Reset conditional flag when not condition is met
         return RunTimeObject("null", None)
+
+    def visit_while(self, node: 'WhileNode'):
+        expr = node.expr.accept(self)
+
+        while expr.value and node.body:
+            node.body.accept(self)
+            expr = node.expr.accept(self)
+        return RunTimeObject('null', None)
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """
@@ -171,7 +176,7 @@ class Interpreter:
         self.func_call_count += 1
         if self.func_call_count > INTERNAL_RECURSION_LIMIT:
             self.func_call_count = 0
-            raise RecursionError("(╬ Ò﹏Ó) Ara Ara! Interpreter recursion depth exceeded, "
+            raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
         # Store current symbol table
@@ -361,9 +366,12 @@ class Interpreter:
 
                 if right.label == "number":
                     return RunTimeObject("number", -right.value)
-
-                # TODO: Implement negative operator for identifiers
-                raise NotImplementedError("Negative operator not implemented for identifiers")
+                else:
+                    var_runtime_object = self.symbol_table.get_variable(right.value).copy()
+                    if var_runtime_object.label != 'number':
+                        raise TypeError("You gave me something that's not a number")
+                    var_runtime_object.value *= -1
+                    return var_runtime_object
         return left
 
     @staticmethod
@@ -388,4 +396,4 @@ class Interpreter:
 
     @staticmethod
     def generic_visit(node):
-        raise Exception(f'No visit_{node.label} method defined')
+        raise NotImplementedError(f'No visit_{node.label} method defined')
