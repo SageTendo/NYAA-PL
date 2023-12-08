@@ -1,5 +1,3 @@
-import sys
-
 ERROR = '\033[91m'
 WARNING = '\033[33m'
 SUCCESS = '\033[92m'
@@ -129,7 +127,7 @@ def warning_msg(msg):
     Displays warning to console
     @param msg:
     """
-    print(f"{WARNING}{msg}{ENDC}", file=sys.stderr)
+    return f"{WARNING}{msg}{ENDC}"
 
 
 def success_msg(msg):
@@ -137,4 +135,4 @@ def success_msg(msg):
     Display info to console
     @param msg:
     """
-    print(f"{SUCCESS}{msg}{ENDC}")
+    return f"{SUCCESS}{msg}{ENDC}"

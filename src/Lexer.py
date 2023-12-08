@@ -1,5 +1,6 @@
-from src.Token import Token
-from src.Types import TokenType
+from src.core.AComponent import AComponent
+from src.core.Token import Token
+from src.core.Types import TokenType
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
 from src.utils.ErrorHandler import throw_unexpected_char_err, throw_identifier_length_err, \
     throw_unexpected_escape_char_err, throw_non_printable_char_err, throw_unexpected_eof_err, throw_string_length_err
@@ -32,15 +33,14 @@ RESERVED_WORDS = {
 }
 
 
-class Lexer:
+class Lexer(AComponent):
     class _Position:
         def __init__(self, line_number, column_number):
             self.line_number = line_number
             self.column_number = column_number
 
-    __debug_mode = False
-
     def __init__(self):
+        super().__init__()
         self.__program = []
         self.__program_counter = 0
 
@@ -94,11 +94,20 @@ class Lexer:
         self._next_char()
 
     def peek_token(self):
+        """
+        Look at the next token, used when parsing the source
+        @return: The next token found from the source
+        """
         token = self.get_token()
         self.__buffer.append(token)
         return token
 
     def get_token(self):
+        """
+        Scans through the source until a recognized symbol or
+         keyword is found and returns it as a token object.
+        @return: The token found from scanning the source's symbols
+        """
         token = Token()
 
         # Check if there are any tokens in the buffer
@@ -198,11 +207,16 @@ class Lexer:
         else:
             token.type = TokenType.ENDMARKER
 
-        if self.__debug_mode:
-            print(token)
+        self.debug(token)
         return token
 
     def _process_word(self, token):
+        """
+        Processes found identifiers or reserved words and
+        returns a token with its associated type and value (the processed word).
+        @param token: The token to assign a type and value to
+        @return: The token after processing the word
+        """
         processed_word = ""
 
         # Read word
@@ -230,6 +244,12 @@ class Lexer:
         token.type = TokenType.ID
 
     def _process_number(self, token):
+        """
+        Processes found numbers and
+        returns a token with its associated type and value (the processed number).
+        @param token: The token to assign a type and value to
+        @return: The token after processing the number
+        """
         # Initialize processed_number with the numeric value of the current character
         processed_number = ord(self.__ch) - ord('0')
 
@@ -252,6 +272,12 @@ class Lexer:
         token.type = TokenType.INT
 
     def _process_float(self, token):
+        """
+        Processes found floating point numbers and
+        returns a token with its associated type and value (the processed float).
+        @param token: The token to assign a type and value to
+        @return: The token after processing the float
+        """
         # Initialize processed_number with the numeric value of the current character
         processed_fraction = float(ord(self.__ch) - ord('0'))
         divisor = 10
@@ -279,6 +305,12 @@ class Lexer:
         token.type = TokenType.FLOAT
 
     def _process_string(self, token):
+        """
+        Processes found string literals and
+        returns a token with its associated type and value (the processed string)
+        @param token: The token to assign a type and value to
+        @return: The token after processing the string
+        """
         processed_string = ""
 
         while self.__ch != '"':
@@ -323,21 +355,14 @@ class Lexer:
         self.__position.column_number = self.__column_number
 
     def _skip_comment(self):
+        """
+        Skips comments found in the source
+        """
         while self.__ch != '\n':
             self._next_char()
-
-    def get_last_read(self):
-        return self.__last_read_ch
 
     def get_line_number(self):
         return self.__position.line_number
 
     def get_col_number(self):
         return self.__position.column_number
-
-    def debug_info(self, token):
-        if self.__debug_mode:
-            print(token)
-
-    def verbose(self, debug_mode=False):
-        self.__debug_mode = debug_mode

@@ -21,6 +21,10 @@ class Repl:
                 AST = self.parser.parse_source(repl_input=line, dflags=dflags)
 
                 res = self.interpreter.interpret(AST)
+                if not res or res.label == 'null':
+                    print()
+                    continue
+
                 if isinstance(res, list):
                     for r in res:
                         if r:

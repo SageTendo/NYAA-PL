@@ -3,7 +3,7 @@ import sys
 
 from src.Interpreter import Interpreter
 from src.Parser import Parser
-from src.repl.Repl import Repl
+from src.Repl import Repl
 
 
 def parse_args():
@@ -12,13 +12,7 @@ def parse_args():
     @return:
     """
 
-    class CustomArgParser(argparse.ArgumentParser):
-        # def error(self, message):
-        #     print(f"Usage: python3 {__file__} <PROGRAM> {ENDC}")
-        #     exit(1)
-        pass
-
-    arg_parser = CustomArgParser()
+    arg_parser = argparse.ArgumentParser()
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         arg_parser.add_argument("src", type=str, help="The source file to translate")
 
@@ -26,7 +20,8 @@ def parse_args():
         '-l', '--lexer', action='store_true', default=False, help="Verbose mode for the lexer")
     arg_parser.add_argument(
         '-p', '--parser', action='store_true', default=False, help="Verbose mode for the parser")
-
+    arg_parser.add_argument(
+        '-i', '--interpreter', action='store_true', default=False, help="Verbose mode for the interpreter")
     return arg_parser.parse_args()
 
 
@@ -35,8 +30,9 @@ if __name__ == '__main__':
     args = parse_args()
     parser = Parser()
     interpreter = Interpreter()
-    dflags = {"lexer": args.lexer, "parser": args.parser}
+    interpreter.verbose(args.interpreter)
 
+    dflags = {"lexer": args.lexer, "parser": args.parser}
     if 'src' not in args:
         # REPL mode
         Repl(parser, interpreter).run(dflags=dflags)
