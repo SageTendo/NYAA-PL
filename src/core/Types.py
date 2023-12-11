@@ -77,6 +77,11 @@ class TokenType(Enum):
         ]
 
     @classmethod
+    def conditional_stmt_start(cls, token):
+        return (cls.statement_start(token) or
+                token.type in [TokenType.BREAK, TokenType.CONTINUE])
+
+    @classmethod
     def postfix(cls, token):
         return token.type in [
             TokenType.UN_ADD, TokenType.UN_SUB

@@ -19,6 +19,7 @@ funcDef            : DEFINE ID LPAR (ID (',' ID)*)? RPAR TO LBRACE body RBRACE;
 
 // Statements
 body               : statement*;
+conditionalBody    : statement conditionalBody? | BREAK | CONTINUE;
 
 statement          : PASS
                     |assignmentStatement
@@ -45,10 +46,10 @@ inputStatement     : INPUT LPAR STR_CONSTANT? RPAR;
 callStatement      : ID args;
 
 // Conditional Statements
-whileStatement     : WHILE LPAR expression RPAR LBRACE (CONTINUE | BREAK | body) RBRACE;
-ifStatement        : IF LPAR expression RPAR LBRACE body RBRACE elifStatement* elseStatement?;
-elifStatement      : ELIF LPAR expression RPAR LBRACE body RBRACE;
-elseStatement      : ELSE LBRACE body RBRACE;
+whileStatement     : WHILE LPAR expression RPAR LBRACE (CONTINUE | BREAK | conditionalBody) RBRACE;
+ifStatement        : IF LPAR expression RPAR LBRACE conditionalBody RBRACE elifStatement* elseStatement?;
+elifStatement      : ELIF LPAR expression RPAR LBRACE conditionalBody RBRACE;
+elseStatement      : ELSE LBRACE conditionalBody RBRACE;
 
 // Expressions
 postfixExpression  : ID (UN_ADD | UN_SUB);

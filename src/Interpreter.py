@@ -1,40 +1,33 @@
 import sys
 
-from src.AST.AST import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
+from src.core.AComponent import AComponent
+from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode
-from src.SymbolTable import SymbolTable
-from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err
+    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
+    ContinueNode
+from src.core.RuntimeObject import RunTimeObject
+from src.core.SymbolTable import SymbolTable
+from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg
 
 MAX_VISIT_DEPTH = 5470
 INTERNAL_RECURSION_LIMIT = 780
 SYS_RECURSION_LIMIT = 1000000
 
 
-class RunTimeObject:
-    def __init__(self, label, value, value_type=None):
-        self.label = label
-        self.value = value
-        self.type = value_type
-
-    def copy(self):
-        return RunTimeObject(self.label, self.value, self.type)
-
-    def __repr__(self):
-        if self.type is None:
-            return f"RuntimeObject({self.label}) = {self.value}"
-        return f"RuntimeObject({self.label} | {self.type}) = {self.value}"
-
-
-class Interpreter:
+class Interpreter(AComponent):
     def __init__(self):
+        super().__init__()
+        self.symbol_table = SymbolTable()
+
+        #  Control flow flags
+        self.conditional_flag = False
+        self.break_flag = False
+        self.continue_flag = False
+        sys.setrecursionlimit(SYS_RECURSION_LIMIT)
+
         # Safety nets
         self.__visitor_dept = 0
         self.func_call_count = 0
-        self.conditional_flag = False
-        sys.setrecursionlimit(SYS_RECURSION_LIMIT)
-
-        self.symbol_table = SymbolTable()
 
     def interpret(self, ast):
         """
@@ -44,12 +37,8 @@ class Interpreter:
         """
         try:
             return ast.accept(self)
-        except RecursionError:
-            print(
-                "Error: (´｡• ω •｡`) Visitor depth exceeded! "
-                "You've ventured too far into the code jungle. "
-                "Time to retreat before you're lost in the wild recursion! "
-                "(¬‿¬)")
+        except RecursionError as e:
+            print("Visitor Error (´｡• ω •｡`):", e, file=sys.stderr)
             exit(1)
 
     def visit(self, node):
@@ -61,24 +50,53 @@ class Interpreter:
         if self.__visitor_dept >= MAX_VISIT_DEPTH:
             # visitor depth exceeded and an error should be thrown
             # to prevent the Python interpreter from a segfault
-            raise RecursionError
+            raise RecursionError(
+                "Visitor depth exceeded! You've ventured too far into the code jungle. "
+                "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
         try:
             self.__visitor_dept += 1
             method = f"visit_{node.label}"
+
+            self.debug(warning_msg(f"Visiting {node.label}"))
             visitor = getattr(self, method, self.generic_visit)(node)
+            if visitor:
+                self.debug(success_msg(f"Returned --> {node.label}: {visitor}"))
+
             self.__visitor_dept -= 1
             return visitor
         except RecursionError as e:
             # Recursion depth exceeded by user defined functions
-            print(e)
-            exit()
+            print("Recursion Error:", e, file=sys.stderr)
+            exit(1)
+        except NotImplementedError as e:
+            # visit method not implemented
+            print("Visit Error:", e, file=sys.stderr)
+            exit(1)
+        except TypeError as e:
+            print("Type Error: (╬ Ò﹏Ó)", e, file=sys.stderr)
+            exit(1)
 
-    def handle_runtime_object(self, runtime_value: 'RunTimeObject'):
-        if runtime_value.label == "identifier":
-            return self.symbol_table.get_variable(runtime_value.value)
+    def __get_runtime_value(self, runtime_obj: 'RunTimeObject'):
+        """
+        Returns the runtime value of a runtime object
+        @param runtime_obj: The object to return the value from
+        @return: The runtime value of the runtime object
+        """
+        runtime_obj = self.__test_for_identifier(runtime_obj)
+        return runtime_obj.value
+
+    def __test_for_identifier(self, runtime_object: 'RunTimeObject'):
+        """
+        Checks if the runtime object is an identifier, and returns
+        the value held by the identifier
+        @param runtime_object: The runtime object to test
+        @return: The non-identifier runtime object
+        """
+        if runtime_object.label == "identifier":
+            return self.symbol_table.get_variable(runtime_object.value)
         else:
-            return runtime_value.value
+            return runtime_object
 
     def visit_program(self, node: 'ProgramNode'):
         if node.eof:
@@ -107,46 +125,97 @@ class Interpreter:
         self.symbol_table.add_function_props(node.identifier, function_props)
 
     def visit_body(self, node: 'BodyNode'):
-        # FIXME: Body nodes outside of conditional statements should not be visited if the condition is not met
-        last_stmt = RunTimeObject('null', None)
-        for stmt in node.statements:
-            if stmt.label == 'return':
-                return stmt.accept(self)
-            last_stmt = stmt.accept(self)
+        last_evaluated = None
 
-            # conditional flag to break out of loop when condition is met
+        for stmt in node.statements:
+            if stmt.label == "break":
+                # Set break flag and continue
+                self.break_flag = True
+                break
+            elif stmt.label == "continue":
+                self.continue_flag = True
+                continue
+            elif stmt.label == "pass":
+                continue
+
+            # Check if condition flags is set and if so, stop visiting the body and return
             if self.conditional_flag:
                 break
-        self.conditional_flag = False
-        return last_stmt
+
+            evaluated = stmt.accept(self)
+            last_evaluated = evaluated if evaluated else last_evaluated
+            if stmt.label == "return":
+                return last_evaluated
+
+        self.conditional_flag = False  # Reset condition flag
+        return last_evaluated
 
     def visit_pass(self, node: 'PassNode'):
-        node.accept(self)
-        return RunTimeObject("null", None)
+        pass
 
     def visit_return(self, node: 'ReturnNode'):
         if node.expr:
             return node.expr.accept(self)
-        return RunTimeObject("null", None)
+
+    def visit_break(self, node: 'BreakNode'):
+        pass
+
+    def visit_continue(self, node: 'ContinueNode'):
+        pass
+
+    def __handle_conditional_execution(self, body_node: 'BodyNode'):
+        if not body_node:  # Empty body
+            return
+
+        stmt = body_node.accept(self)
+        last_node = body_node.statements[-1]
+        if last_node.label == "return":
+            self.conditional_flag = True
+            return stmt
+        elif last_node.label in ["continue", "break"]:
+            self.conditional_flag = True
 
     def visit_if(self, node: 'IfNode'):
         expr = node.expr.accept(self)
+        body = node.body
 
-        self.conditional_flag = True  # Set conditional flag when condition is met (expr is true)
-        if expr.value and node.body:  # Handle if statement
-            return node.body.accept(self)
-        elif node.else_if_statements:  # Handle elif statements
+        if expr.value:
+            # Handle if statement
+            if stmt := self.__handle_conditional_execution(body):
+                return stmt
 
+        elif node.else_if_statements:
             for else_if_stmt in node.else_if_statements:
+                # Handle elif statement
                 expr = else_if_stmt.expr.accept(self)
+                if not expr.value:
+                    continue
 
-                if expr.value and else_if_stmt.body:
-                    return else_if_stmt.body.accept(self)
-        elif node.else_body:  # Handle else statement
-            return node.else_body.accept(self)
+                if stmt := self.__handle_conditional_execution(else_if_stmt.body):
+                    return stmt
+        elif node.else_body:
+            # Handle else statement
+            if stmt := self.__handle_conditional_execution(node.else_body):
+                return stmt
 
-        self.conditional_flag = False  # Reset conditional flag when not condition is met
-        return RunTimeObject("null", None)
+    def visit_while(self, node: 'WhileNode'):
+        expr = node.expr.accept(self)
+
+        while expr.value and node.body:
+            # Handle while body
+            if stmt := self.__handle_conditional_execution(node.body):
+                return stmt
+
+            # Handle control flow statements
+            if self.continue_flag:
+                self.continue_flag = False
+                continue
+            elif self.break_flag:
+                self.break_flag = False
+                break
+
+            # Evaluate condition
+            expr = node.expr.accept(self)
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """
@@ -171,7 +240,7 @@ class Interpreter:
         self.func_call_count += 1
         if self.func_call_count > INTERNAL_RECURSION_LIMIT:
             self.func_call_count = 0
-            raise RecursionError("(╬ Ò﹏Ó) Ara Ara! Interpreter recursion depth exceeded, "
+            raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
         # Store current symbol table
@@ -193,8 +262,7 @@ class Interpreter:
             # Store values of args
             arg_values = []
             for arg in args:
-                if arg.label == "identifier":  # Get value from symbol table for variables
-                    arg = self.symbol_table.get_variable(arg.value)
+                arg = self.__test_for_identifier(arg)
                 arg_values.append(arg)
 
             # Create a local symbol table
@@ -207,6 +275,8 @@ class Interpreter:
 
         # Visit function body
         result = self.symbol_table.get_function_body(identifier).accept(self)
+        if result:
+            result = self.__test_for_identifier(result)
 
         # Restore previous symbol table and func_call_count
         self.func_call_count -= 1
@@ -226,21 +296,15 @@ class Interpreter:
     def visit_print(self, node: 'PrintNode'):
         args = node.args.accept(self)
         for arg in args:
-            runtime_value = self.handle_runtime_object(arg)
-
-            # Convert RunTimeObject to value if necessary
-            # (Variable values are stored as RunTimeObjects)
-            if isinstance(runtime_value, RunTimeObject):
-                runtime_value = self.handle_runtime_object(runtime_value)
+            runtime_value = self.__get_runtime_value(arg)
             print(runtime_value, end=' ')
         print()
-        return RunTimeObject("null", None)
 
     def visit_postfix_expr(self, node: 'PostfixExprNode'):
         lhs = node.left.accept(self)
 
         # Variable value is stored as RunTimeObject
-        runtime_object = self.handle_runtime_object(lhs)
+        runtime_object = self.__test_for_identifier(lhs)
 
         # Increment or decrement variable value
         if node.op == "++":
@@ -271,10 +335,8 @@ class Interpreter:
             right = node.right.accept(self)
 
             # Get runtime object for left and right node, if they are identifier nodes
-            if left.label == 'identifier':
-                left = self.symbol_table.get_variable(left.value)
-            if right.label == 'identifier':
-                right = self.symbol_table.get_variable(right.value)
+            left = self.__test_for_identifier(left)
+            right = self.__test_for_identifier(right)
 
             # Handle operation
             if node.op in ["+", "-", 'or']:
@@ -361,9 +423,14 @@ class Interpreter:
 
                 if right.label == "number":
                     return RunTimeObject("number", -right.value)
+                else:
+                    var_runtime_object = self.symbol_table.get_variable(right.value).copy()
+                    if var_runtime_object.label != 'number':
+                        raise TypeError("You gave me something that's not a number")
 
-                # TODO: Implement negative operator for identifiers
-                raise NotImplementedError("Negative operator not implemented for identifiers")
+                    # Negate the value
+                    var_runtime_object.value *= -1
+                    return var_runtime_object
         return left
 
     @staticmethod
@@ -388,4 +455,4 @@ class Interpreter:
 
     @staticmethod
     def generic_visit(node):
-        raise Exception(f'No visit_{node.label} method defined')
+        raise NotImplementedError(f'No visit_{node.label} method defined')

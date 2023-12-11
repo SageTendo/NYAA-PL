@@ -1,6 +1,6 @@
 class SymbolTable:
     def __init__(self):
-        self.table = {}
+        self.__table = {}
 
     def add_variable(self, name: str, value: 'RunTimeObject'):
         """
@@ -9,7 +9,7 @@ class SymbolTable:
         @param value: The value of the variable.
         """
         key = (name, 'id')
-        self.table[key] = value
+        self.__table[key] = value
 
     def get_variable(self, name):
         """
@@ -19,10 +19,9 @@ class SymbolTable:
         @raise Exception: If the variable is not found in the table.
         """
         key = (name, 'id')
-
-        if key not in self.table:
+        if key not in self.__table:
             raise Exception(f"Variable '{name}' not found")
-        return self.table[key]
+        return self.__table[key]
 
     def add_function_props(self, name: str, value: dict):
         """
@@ -33,9 +32,9 @@ class SymbolTable:
         """
         key = (name, 'func')
 
-        if key in self.table:
+        if key in self.__table:
             raise Exception(f"Function '{name}' already exists")
-        self.table[key] = value
+        self.__table[key] = value
 
     def get_function_props(self, name):
         """
@@ -46,9 +45,9 @@ class SymbolTable:
         """
         key = (name, 'func')
 
-        if key not in self.table:
+        if key not in self.__table:
             raise Exception(f"Function '{name}' not found")
-        return self.table[key]
+        return self.__table[key]
 
     def get_function_params(self, name):
         """
@@ -75,9 +74,9 @@ class SymbolTable:
         """
         key = (name, 'id')
 
-        if key not in self.table:
+        if key not in self.__table:
             raise Exception(f"Variable '{name}' not found")
-        self.table[key] = value
+        self.__table[key] = value
 
     def set_param(self, identifier, param, arg_runtime_value):
         """
@@ -89,7 +88,7 @@ class SymbolTable:
         """
         key = (identifier, 'func')
 
-        if key not in self.table:
+        if key not in self.__table:
             raise Exception(f"Function '{identifier}' not found")
         self.get_function_params(key)[param] = arg_runtime_value
 
@@ -99,7 +98,19 @@ class SymbolTable:
         @return: The copy of the symbol table.
         """
         new_table = SymbolTable()
-        for key in self.table.keys():
+        for key in self.__table.keys():
             if key[1] == 'func':
-                new_table.table[key] = self.table[key]
+                new_table.__table[key] = self.__table[key]
         return new_table
+
+    def __str__(self):
+        table = ""
+        for k, v in self.__table.items():
+            if k[1] == 'id':
+                table += (f"Var: {k[0]}[{k[1]}] =>\n"
+                          f"  Value: {v}\n\n")
+            elif k[1] == 'func':
+                table += (f"Func: {k[0]}[{k[1]}] =>\n"
+                          f"  Params: {v['params']}\n"
+                          f"  Body: {v['body']}\n\n")
+        return table

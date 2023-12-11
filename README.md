@@ -2,7 +2,7 @@
   
 ## Introduction  
   
-NYAA-PL is an interpreted programming language developed in Python (because why not :P),  
+NYAA-PL is a tree-walk interpreted programming language developed in Python (because why not :P),  
 created for fun and exploration in the realms of language and compiler design. Inspired by  
 anime, memes and the japanese language (borrowed and native words) references, this isn't  
 intended for real-world use.  
