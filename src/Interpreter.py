@@ -27,7 +27,7 @@ class Interpreter(AComponent):
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
-        self.internal_recursion_depth = 0  # Keep track of number of recursive function calls
+        self.__internal_recursion_depth = 0  # Keep track of number of recursive function calls
 
     def interpret(self, ast):
         """
@@ -273,9 +273,9 @@ class Interpreter(AComponent):
         @param node: The function call node to visit
         """
         # Check for stack overflow
-        self.internal_recursion_depth += 1
-        if self.internal_recursion_depth > INTERNAL_RECURSION_LIMIT:
-            self.internal_recursion_depth = 0
+        self.__internal_recursion_depth += 1
+        if self.__internal_recursion_depth > INTERNAL_RECURSION_LIMIT:
+            self.__internal_recursion_depth = 0
             raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
@@ -308,9 +308,9 @@ class Interpreter(AComponent):
         if result := function_body.accept(self):
             result = self.__test_for_identifier(result)
 
-        # Restore previous symbol table and internal_recursion_depth
+        # Restore previous symbol table and internal recursion depth
         self.symbol_table = old_table
-        self.internal_recursion_depth -= 1
+        self.__internal_recursion_depth -= 1
         return result
 
     @staticmethod
