@@ -19,7 +19,7 @@ funcDef            : DEFINE ID LPAR (ID (',' ID)*)? RPAR TO LBRACE body RBRACE;
 
 // Statements
 body               : statement*;
-conditionalBody    : statement conditionalBody | BREAK | CONTINUE;
+conditionalBody    : statement conditionalBody? | BREAK | CONTINUE;
 
 statement          : PASS
                     |assignmentStatement

@@ -19,7 +19,6 @@ class SymbolTable:
         @raise Exception: If the variable is not found in the table.
         """
         key = (name, 'id')
-
         if key not in self.__table:
             raise Exception(f"Variable '{name}' not found")
         return self.__table[key]
@@ -103,3 +102,15 @@ class SymbolTable:
             if key[1] == 'func':
                 new_table.__table[key] = self.__table[key]
         return new_table
+
+    def __str__(self):
+        table = ""
+        for k, v in self.__table.items():
+            if k[1] == 'id':
+                table += (f"Var: {k[0]}[{k[1]}] =>\n"
+                          f"  Value: {v}\n\n")
+            elif k[1] == 'func':
+                table += (f"Func: {k[0]}[{k[1]}] =>\n"
+                          f"  Params: {v['params']}\n"
+                          f"  Body: {v['body']}\n\n")
+        return table

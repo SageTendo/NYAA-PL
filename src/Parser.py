@@ -142,85 +142,114 @@ class Parser(AComponent):
 
     def parse_body(self):
         """
-        body:               statement*
-        statement:          PASS | retStatement | assignmentStatement | whileStatement | ifStatement | printStatement
-                            | inputStatement | callStatement | postfixStatement | tryCatchStatement
+        body:   statement*
         @return: BodyNode
         """
         body = BodyNode()
         while TokenType.statement_start(self.curr_tkn):
+            body.append(self.parse_statement())
+        return body
 
-            # Pass statement
-            if self.match(TokenType.PASS):
-                self.__expect_and_consume(TokenType.PASS)
+    def parse_conditional_body(self):
+        """
+        conditionalBody:    statement conditionalBody? | BREAK | CONTINUE
+        @return: body
+        """
+        body = BodyNode()
 
-                self.debug("<PASS>")
-                body.append(PassNode())
-                self.debug("</PASS>")
+        while TokenType.statement_start(self.curr_tkn):
+            body.append(self.parse_statement())
 
-            #  Return statement
-            elif self.match(TokenType.RET):
-                self.debug("<Return>")
-                body.append(self.parse_return())
-                self.debug("</Return>")
-
-            elif self.match(TokenType.ID):
-                # assignment statement
-                if self.peek_token().type == TokenType.ASSIGN:
-                    self.debug("<Assignment>")
-                    body.append(self.parse_assignment())
-                    self.debug("</Assignment>")
-
-                # postfix statement
-                elif TokenType.postfix(self.peek_token()):
-                    self.debug("<Postfix>")
-                    body.append(self.parse_postfix())
-                    self.debug("</Postfix>")
-
-                # call (func calls) statement
-                elif self.peek_token().type == TokenType.LPAR:
-                    self.debug("<FuncCall>")
-                    body.append(self.parse_func_call())
-                    self.debug("</FuncCall>")
-
-                else:
-                    throw_unexpected_token_err(
-                        self.curr_tkn.type,
-                        "ASSIGNMENT_TYPE / POSTFIX_TYPE / FUNC_CALL_TYPE",
-                        self.__lexer.get_line_number(),
-                        self.__lexer.get_col_number())
-            else:
-                # while statement
-                if self.match(TokenType.WHILE):
-                    self.debug("<While>")
-                    body.append(self.parse_while())
-                    self.debug("</While>")
-
-                # if statement
-                elif self.match(TokenType.IF):
-                    self.debug("<If>")
-                    body.append(self.parse_if())
-                    self.debug("</If>")
-
-                # print statement
-                elif self.match(TokenType.PRINT):
-                    self.debug("<Print>")
-                    body.append(self.parse_print())
-                    self.debug("</Print>")
-
-                # input statement
-                elif self.match(TokenType.INPUT):
-                    self.debug("<Input>")
-                    body.append(self.parse_input())
-                    self.debug("</Input>")
-
-                # try-catch statement
-                elif self.match(TokenType.TRY):
-                    self.debug("<TryCatch>")
-                    body.append(self.parse_try_catch())
-                    self.debug("</TryCatch>")
+        if self.match(TokenType.BREAK):
+            self.__expect_and_consume(TokenType.BREAK)
+            body.append(BreakNode())
+        elif self.match(TokenType.CONTINUE):
+            self.__expect_and_consume(TokenType.CONTINUE)
+            body.append(ContinueNode())
 
         return body
+
+    def parse_statement(self):
+        """
+        statement:  PASS | retStatement | assignmentStatement |
+                    whileStatement | ifStatement | printStatement |
+                    inputStatement | callStatement | postfixStatement |
+                    tryCatchStatement
+        @return: A statement node
+        """
+        statement_node = None
+
+        # Pass statement
+        if self.match(TokenType.PASS):
+            self.__expect_and_consume(TokenType.PASS)
+
+            self.debug("<PASS>")
+            statement_node = PassNode()
+            self.debug("</PASS>")
+
+        #  Return statement
+        elif self.match(TokenType.RET):
+            self.debug("<Return>")
+            statement_node = self.parse_return()
+            self.debug("</Return>")
+
+        elif self.match(TokenType.ID):
+            # assignment statement
+            if self.peek_token().type == TokenType.ASSIGN:
+                self.debug("<Assignment>")
+                statement_node = self.parse_assignment()
+                self.debug("</Assignment>")
+
+            # postfix statement
+            elif TokenType.postfix(self.peek_token()):
+                self.debug("<Postfix>")
+                statement_node = self.parse_postfix()
+                self.debug("</Postfix>")
+
+            # call (func calls) statement
+            elif self.peek_token().type == TokenType.LPAR:
+                self.debug("<FuncCall>")
+                statement_node = self.parse_func_call()
+                self.debug("</FuncCall>")
+
+            else:
+                throw_unexpected_token_err(
+                    self.curr_tkn.type,
+                    "ASSIGNMENT_TYPE / POSTFIX_TYPE / FUNC_CALL_TYPE",
+                    self.__lexer.get_line_number(),
+                    self.__lexer.get_col_number())
+        else:
+            # while statement
+            if self.match(TokenType.WHILE):
+                self.debug("<While>")
+                statement_node = self.parse_while()
+                self.debug("</While>")
+
+            # if statement
+            elif self.match(TokenType.IF):
+                self.debug("<If>")
+                statement_node = self.parse_if()
+                self.debug("</If>")
+
+            # print statement
+            elif self.match(TokenType.PRINT):
+                self.debug("<Print>")
+                statement_node = self.parse_print()
+                self.debug("</Print>")
+
+            # input statement
+            elif self.match(TokenType.INPUT):
+                self.debug("<Input>")
+                statement_node = self.parse_input()
+                self.debug("</Input>")
+
+            # try-catch statement
+            elif self.match(TokenType.TRY):
+                self.debug("<TryCatch>")
+                statement_node = self.parse_try_catch()
+                self.debug("</TryCatch>")
+
+        return statement_node
 
     def parse_func_def(self):
         """
@@ -318,22 +347,10 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
-        if self.match(TokenType.BREAK):
-            self.__expect_and_consume(TokenType.BREAK)
-
-            self.debug("<Break>")
-            right_node = BreakNode()
-            self.debug("</Break>")
-        elif self.match(TokenType.CONTINUE):
-            self.__expect_and_consume(TokenType.CONTINUE)
-
-            self.debug("<Continue>")
-            right_node = ContinueNode()
-            self.debug("</Continue>")
-        elif TokenType.statement_start(self.curr_tkn):
-            self.debug("<Body>")
-            right_node = self.parse_body()
-            self.debug("</Body>")
+        if TokenType.conditional_stmt_start(self.curr_tkn):
+            self.debug("<Cond Body>")
+            right_node = self.parse_conditional_body()
+            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
         return WhileNode(left_node, right_node)
@@ -353,10 +370,10 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
-        if TokenType.statement_start(self.curr_tkn):
-            self.debug("<Body>")
-            right_node = self.parse_body()
-            self.debug("</Body>")
+        if TokenType.conditional_stmt_start(self.curr_tkn):
+            self.debug("<Cond Body>")
+            right_node = self.parse_conditional_body()
+            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
         # Parse elif and else statements
@@ -385,10 +402,10 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
-        if TokenType.statement_start(self.curr_tkn):
-            self.debug("<Body>")
-            right_node = self.parse_body()
-            self.debug("</Body>")
+        if TokenType.conditional_stmt_start(self.curr_tkn):
+            self.debug("<Cond Body>")
+            right_node = self.parse_conditional_body()
+            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
         return ElifNode(left_node, right_node)
@@ -402,10 +419,10 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.ELSE)
 
         self.__expect_and_consume(TokenType.LBRACE)
-        if TokenType.statement_start(self.curr_tkn):
-            self.debug("<Body>")
-            body = self.parse_body()
-            self.debug("</Body>")
+        if TokenType.conditional_stmt_start(self.curr_tkn):
+            self.debug("<Cond Body>")
+            body = self.parse_conditional_body()
+            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
         return body
@@ -440,8 +457,8 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.RET)
 
         return_node = ReturnNode()
-        if (TokenType.expression(self.curr_tkn)
-                and self.peek_token().type not in [TokenType.ASSIGN, TokenType.LPAR]):
+        if (TokenType.expression(self.curr_tkn) and
+                self.peek_token().type != TokenType.ASSIGN):
             self.debug("<Expr>")
             return_node.set_expr(self.parse_expr())
             self.debug("</Expr>")
