@@ -26,8 +26,8 @@ class Interpreter(AComponent):
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Safety nets
-        self.__visitor_dept = 0
-        self.func_call_count = 0
+        self.__visitor_depth = 0  # Keep track of the depth of the visitor
+        self.internal_recursion_depth = 0  # Keep track of number of recursive function calls
 
     def interpret(self, ast):
         """
@@ -47,7 +47,7 @@ class Interpreter(AComponent):
         @param node: The node to visit
         @return: The result of the visitor method
         """
-        if self.__visitor_dept >= MAX_VISIT_DEPTH:
+        if self.__visitor_depth >= MAX_VISIT_DEPTH:
             # visitor depth exceeded and an error should be thrown
             # to prevent the Python interpreter from a segfault
             raise RecursionError(
@@ -55,7 +55,7 @@ class Interpreter(AComponent):
                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
         try:
-            self.__visitor_dept += 1
+            self.__visitor_depth += 1
             method = f"visit_{node.label}"
 
             self.debug(warning_msg(f"Visiting {node.label}"))
@@ -63,7 +63,7 @@ class Interpreter(AComponent):
             if visitor:
                 self.debug(success_msg(f"Returned --> {node.label}: {visitor}"))
 
-            self.__visitor_dept -= 1
+            self.__visitor_depth -= 1
             return visitor
         except RecursionError as e:
             # Recursion depth exceeded by user defined functions
@@ -99,6 +99,11 @@ class Interpreter(AComponent):
             return runtime_object
 
     def visit_program(self, node: 'ProgramNode'):
+        """
+        Interprets a program node and returns the result of the program execution
+        @param node: The program node to visit
+        @return: The result of the program execution
+        """
         if node.eof:
             return
 
@@ -111,7 +116,8 @@ class Interpreter(AComponent):
 
     def visit_func_def(self, node: 'FuncDefNode'):
         """
-        Visits a function definition
+        Interprets a function definition node and add the function
+        and its properties to the symbol table
         @param node: The function definition node to visit
         """
         # Handle function parameters
@@ -125,6 +131,12 @@ class Interpreter(AComponent):
         self.symbol_table.add_function_props(node.identifier, function_props)
 
     def visit_body(self, node: 'BodyNode'):
+        """
+        Visits a body node and interprets the statements in the body
+        and returns the result of the last evaluated statement
+        @param node: The body node to visit
+        @return: The result of the last evaluated statement
+        """
         last_evaluated = None
 
         for stmt in node.statements:
@@ -153,17 +165,28 @@ class Interpreter(AComponent):
     def visit_pass(self, node: 'PassNode'):
         pass
 
-    def visit_return(self, node: 'ReturnNode'):
-        if node.expr:
-            return node.expr.accept(self)
-
     def visit_break(self, node: 'BreakNode'):
         pass
 
     def visit_continue(self, node: 'ContinueNode'):
         pass
 
+    def visit_return(self, node: 'ReturnNode'):
+        """
+        Interprets a return node and returns the result of the expression if any
+        @param node: The return node to visit
+        @return: The result of the expression if any
+        """
+        if node.expr:
+            return node.expr.accept(self)
+
     def __handle_conditional_execution(self, body_node: 'BodyNode'):
+        """
+        Handles the execution of a conditional body node
+        and returns the result of the last evaluated statement if any
+        @param body_node: The body node to visit
+        @return: The result of the last evaluated statement if anything is returned
+        """
         if not body_node:  # Empty body
             return
 
@@ -176,6 +199,12 @@ class Interpreter(AComponent):
             self.conditional_flag = True
 
     def visit_if(self, node: 'IfNode'):
+        """
+        Visits an if node and interprets its body if the specified condition is true,
+        and returns the result of the last evaluated statement if any
+        @param node: The if statement node to visit
+        @return: The result of the last evaluated statement if any
+        """
         expr = node.expr.accept(self)
         body = node.body
 
@@ -199,6 +228,12 @@ class Interpreter(AComponent):
                 return stmt
 
     def visit_while(self, node: 'WhileNode'):
+        """
+        Visits a while node and interprets its body while the condition is true,
+        and returns the result of the last evaluated statement if any
+        @param node: The while statement node to visit
+        @return: The result of the last evaluated statement if any
+        """
         expr = node.expr.accept(self)
 
         while expr.value and node.body:
@@ -219,7 +254,7 @@ class Interpreter(AComponent):
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """
-        Visits an assignment statement
+        Visits an assignment statement and handles the assignment operation of identifiers
         @param node: The assignment node to visit
         """
         lhs = node.left.accept(self)
@@ -233,13 +268,14 @@ class Interpreter(AComponent):
 
     def visit_call(self, node: 'CallNode'):
         """
-        Visits a function call
+        Visits a function call and gets the function's parameters and body,
+        and then interprets the function
         @param node: The function call node to visit
         """
         # Check for stack overflow
-        self.func_call_count += 1
-        if self.func_call_count > INTERNAL_RECURSION_LIMIT:
-            self.func_call_count = 0
+        self.internal_recursion_depth += 1
+        if self.internal_recursion_depth > INTERNAL_RECURSION_LIMIT:
+            self.internal_recursion_depth = 0
             raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
@@ -247,10 +283,10 @@ class Interpreter(AComponent):
         old_table = self.symbol_table
 
         # Get args for params
-        identifier = node.identifier
+        function_identifier = node.identifier
         if node.args:
             args = node.args.accept(self)
-            params = self.symbol_table.get_function_params(identifier)
+            params = self.symbol_table.get_function_params(function_identifier)
 
             # Check for invalid number of args
             if len(args) != len(params):
@@ -259,41 +295,39 @@ class Interpreter(AComponent):
                     f"expected {len(params)} "
                     f"but got {len(args)}")
 
-            # Store values of args
-            arg_values = []
-            for arg in args:
-                arg = self.__test_for_identifier(arg)
-                arg_values.append(arg)
-
             # Create a local symbol table
             self.symbol_table = old_table.copy()
 
             # Assign args to params (setting local vars)
-            for param in params:
-                arg_runtime_value = arg_values.pop(0)
-                self.symbol_table.add_variable(param, arg_runtime_value)
+            for i, param in enumerate(params):
+                arg_runtime_object = self.__test_for_identifier(args[i])
+                self.symbol_table.add_variable(param, arg_runtime_object)
 
         # Visit function body
-        result = self.symbol_table.get_function_body(identifier).accept(self)
-        if result:
+        function_body = self.symbol_table.get_function_body(function_identifier)
+        if result := function_body.accept(self):
             result = self.__test_for_identifier(result)
 
-        # Restore previous symbol table and func_call_count
-        self.func_call_count -= 1
+        # Restore previous symbol table and internal_recursion_depth
         self.symbol_table = old_table
+        self.internal_recursion_depth -= 1
         return result
 
     @staticmethod
     def visit_input(node: 'InputNode'):
         """
-        Visits an input statement
-        @param node: The input node to visit
-        @return: The input value
+        Gets input from the user and returns it when an input node is visited
+        @param node: The input node being visited
+        @return: The value inputted by the user
         """
         value = input(node.message)
         return RunTimeObject('string', value)
 
     def visit_print(self, node: 'PrintNode'):
+        """
+        Visits a print statement node and prints the value(s) of evaluated argument(s) to the console
+        @param node: The print statement node to visit
+        """
         args = node.args.accept(self)
         for arg in args:
             runtime_value = self.__get_runtime_value(arg)
@@ -301,6 +335,11 @@ class Interpreter(AComponent):
         print()
 
     def visit_postfix_expr(self, node: 'PostfixExprNode'):
+        """
+        Visits a postfix expression node and returns the result of the expression evaluated
+        @param node: The postfix expression node to visit
+        @return: The result of the postfix expression
+        """
         lhs = node.left.accept(self)
 
         # Variable value is stored as RunTimeObject
@@ -314,22 +353,49 @@ class Interpreter(AComponent):
         return RunTimeObject("number", runtime_object.value)
 
     def visit_args(self, node: 'ArgsNode'):
+        """
+        Visits the arguments node and returns the a list of values
+        associated with the evaluated arguments
+        @param node: The arguments node to visit
+        @return:  List of argument values evaluated
+        """
         args = []
         for arg in node.children:
             args.append(arg.accept(self))
         return args
 
     def visit_expr(self, node: 'ExprNode'):
+        """
+        Visits an expression node and returns the result of the evaluated expression
+        @param node: The expression node to visit
+        @return: The result of the expression evaluated
+        """
         expr = self.handle_expressions(node)
         return expr
 
     def visit_simple_expr(self, node: 'SimpleExprNode'):
+        """
+        Visits a simple expression node and returns the result of the evaluated expression
+        @param node: The simple expression node to visit
+        @return: The result of the expression evaluated
+        """
         return self.handle_expressions(node)
 
     def visit_term(self, node: 'TermNode'):
+        """
+        Visits a term node and returns the result of the evaluated expression
+        @param node: The term node to visit
+        @return: The result of the expression evaluated
+        """
         return self.handle_expressions(node)
 
     def handle_expressions(self, node):
+        """
+        Handles expressions and returns the result of the operation
+        associated with the expression
+        @param node: The expression node to handle
+        @return: The result of the operation
+        """
         left = node.left.accept(self)
         if node.op:
             right = node.right.accept(self)
@@ -352,6 +418,13 @@ class Interpreter(AComponent):
 
     @staticmethod
     def handle_additive_expressions(left, right, op):
+        """
+        Handles additive expressions and returns the result of the operation
+        @param left: The left operand of the operation
+        @param right: The right operand of the operation
+        @param op: The operation to perform
+        @return: The result of the operation
+        """
         if op == "+":
 
             if left.label == "string" and left.label == right.label:  # String concat
@@ -370,6 +443,14 @@ class Interpreter(AComponent):
 
     @staticmethod
     def handle_multiplicative_expressions(left, right, op):
+        """
+        Handles multiplicative expressions and returns the result of the operation
+        as a runtime object
+        @param left: The left operand of the operation
+        @param right: The right operand of the operation
+        @param op: The operation to perform
+        @return: The result of the operation
+        """
         if op == "*":
 
             if ((left.label == "string" and right.label == "number")
@@ -391,6 +472,14 @@ class Interpreter(AComponent):
 
     @staticmethod
     def handle_relational_expressions(left, right, op):
+        """
+        Handles relational expressions and returns the result of the operation
+        as a runtime object
+        @param left: The left operand of the operation
+        @param right: The right operand of the operation
+        @param op: The operation to perform
+        @return: The result of the operation
+        """
         if left.label == "string" and right.label == "number":
 
             res = eval(f"{len(left.value)} {op} {right.value}")
@@ -406,6 +495,11 @@ class Interpreter(AComponent):
         throw_invalid_operation_err(left.value, op, right.value)
 
     def visit_factor(self, node: 'FactorNode'):
+        """
+        Visits a factor node and returns the result of the evaluated factor
+        @param node: The factor node to visit
+        @return: The result of the factor evaluated
+        """
         left = node.left.accept(self)
 
         if node.right:
@@ -435,24 +529,53 @@ class Interpreter(AComponent):
 
     @staticmethod
     def visit_operator(node: 'OperatorNode'):
+        """
+        Visits an operator and returns the value as a runtime object
+        @param node: The operator node to visit
+        @return: The operator value as a runtime object
+        """
         return RunTimeObject("operator", node.value)
 
     @staticmethod
     def visit_identifier(node: 'IdentifierNode'):
+        """
+        Visits an identifier and returns the value as a runtime object
+        @param node: The identifier node to visit
+        @return: The identifier value as a runtime object
+        """
         return RunTimeObject("identifier", node.value)
 
     @staticmethod
     def visit_numeric_literal(node: 'NumericLiteralNode'):
+        """
+        Visits a numeric literal and returns the value as a runtime object
+        @param node: The numeric literal node to visit
+        @return: The numeric literal value as a runtime object
+        """
         return RunTimeObject("number", node.value)
 
     @staticmethod
     def visit_string_literal(node: 'StringLiteralNode'):
+        """
+        Visits a string literal and returns the value as a runtime object
+        @param node: The string literal node to visit
+        @return: The string literal value as a runtime object
+        """
         return RunTimeObject("string", node.value)
 
     @staticmethod
     def visit_boolean_literal(node: 'BooleanNode'):
+        """
+        Visits a boolean literal and returns the value as a runtime object
+        @param node: The boolean literal node to visit
+        @return: The boolean literal value as a runtime object
+        """
         return RunTimeObject("boolean", node.value)
 
     @staticmethod
     def generic_visit(node):
+        """
+        Called if no visitor function exists for a node.
+        @param node: The node to visit
+        """
         raise NotImplementedError(f'No visit_{node.label} method defined')

@@ -1,0 +1,3 @@
+uWu_nyaa() => {
+    modoru
+}
