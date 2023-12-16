@@ -5,12 +5,13 @@ from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNo
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
     AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
     ContinueNode
+from src.core.LRUCache import cache_mem
 from src.core.RuntimeObject import RunTimeObject
 from src.core.SymbolTable import SymbolTable
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg
 
 MAX_VISIT_DEPTH = 5470
-INTERNAL_RECURSION_LIMIT = 780
+INTERNAL_RECURSION_LIMIT = 1010
 SYS_RECURSION_LIMIT = 1000000
 
 
@@ -23,11 +24,11 @@ class Interpreter(AComponent):
         self.conditional_flag = False
         self.break_flag = False
         self.continue_flag = False
-        sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
         self.__internal_recursion_depth = 0  # Keep track of number of recursive function calls
+        sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
     def interpret(self, ast):
         """
@@ -59,12 +60,18 @@ class Interpreter(AComponent):
             method = f"visit_{node.label}"
 
             self.debug(warning_msg(f"Visiting {node.label}"))
-            visitor = getattr(self, method, self.generic_visit)(node)
-            if visitor:
-                self.debug(success_msg(f"Returned --> {node.label}: {visitor}"))
+            visit_method = getattr(self, method, self.generic_visit)
+
+            # Cache node visits
+            if not cache_mem.has_key(node):
+                cache_mem.put(node, visit_method)
+
+            # Visit (in the case of cache misses)
+            if result := visit_method(node):
+                self.debug(success_msg(f"Returned --> {node.label}: {result}"))
 
             self.__visitor_depth -= 1
-            return visitor
+            return result
         except RecursionError as e:
             # Recursion depth exceeded by user defined functions
             print("Recursion Error:", e, file=sys.stderr)
@@ -305,8 +312,14 @@ class Interpreter(AComponent):
 
         # Visit function body
         function_body = self.symbol_table.get_function_body(function_identifier)
-        if result := function_body.accept(self):
+
+        # Check cache for previously stored value, else walk through the function body
+        table_hash = hash(self.symbol_table)
+        if result := cache_mem.get(table_hash):
             result = self.__test_for_identifier(result)
+        elif result := function_body.accept(self):
+            result = self.__test_for_identifier(result)
+            cache_mem.put(table_hash, result)
 
         # Restore previous symbol table and internal recursion depth
         self.symbol_table = old_table

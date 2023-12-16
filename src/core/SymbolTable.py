@@ -105,7 +105,7 @@ class SymbolTable:
 
     def __str__(self):
         table = ""
-        for k, v in self.__table.items():
+        for k, v in sorted(self.__table.items()):
             if k[1] == 'id':
                 table += (f"Var: {k[0]}[{k[1]}] =>\n"
                           f"  Value: {v}\n\n")
@@ -114,3 +114,6 @@ class SymbolTable:
                           f"  Params: {v['params']}\n"
                           f"  Body: {v['body']}\n\n")
         return table
+
+    def __hash__(self):
+        return hash(self.__str__())

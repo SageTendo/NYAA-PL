@@ -1,11 +1,16 @@
 import json
 
+from src.core.LRUCache import cache_mem
+
 
 class Node:
     def __init__(self, node_label):
         self.label = node_label
 
     def accept(self, visitor):
+        # Check cache for node visiter
+        if method := cache_mem.get(self):
+            return method(self)
         return visitor.visit(self)
 
     def to_json(self):
