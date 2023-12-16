@@ -104,6 +104,9 @@ class SymbolTable:
         return new_table
 
     def __str__(self):
+        """
+        @return: The string representation of the symbol table
+        """
         table = ""
         for k, v in sorted(self.__table.items()):
             if k[1] == 'id':
@@ -116,4 +119,7 @@ class SymbolTable:
         return table
 
     def __hash__(self):
+        """
+        @return: The hash value of the symbol table
+        """
         return hash(self.__str__())

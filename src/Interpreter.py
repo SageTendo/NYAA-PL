@@ -267,10 +267,8 @@ class Interpreter(AComponent):
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
 
-        if rhs.label == "identifier":
-            # Get variable and make a copy of its runtime object
-            rhs = self.symbol_table.get_variable(rhs.value).copy()
-        self.symbol_table.add_variable(lhs.value, rhs)
+        rhs = self.__test_for_identifier(rhs)
+        self.symbol_table.add_variable(lhs.value, RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))
         return rhs
 
     def visit_call(self, node: 'CallNode'):

@@ -37,10 +37,15 @@ class LRUCache:
             self.__cache_map[key] = value
 
     def has_key(self, key):
+        """
+        Check if a key exists in the symbol table
+        @param key: key to check
+        @return: True if the key exists in the symbol, otherwise False
+        """
         return key in self.__cache_map
 
     def display(self):
         print(self.__cache_map)
 
 
-cache_mem = LRUCache(1000)
+cache_mem = LRUCache()
