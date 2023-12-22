@@ -25,7 +25,8 @@ def throw_unexpected_char_err(char, line_number, col_number):
     @param col_number :  The column number of the unexpected character
     """
     raise __throw_err(f"Lexical error\n"
-                      f"Unexpected character {WARNING}'{char}'{ERROR} at position {WARNING}{line_number}:{col_number}{ENDC}")
+                      f"Unexpected character {WARNING}'{char}'{ERROR}"
+                      f" at position {WARNING}{line_number}:{col_number}{ENDC}")
 
 
 def throw_unexpected_eof_err(line_number, col_number):
@@ -46,7 +47,8 @@ def throw_unexpected_escape_char_err(char, line_number, col_number):
     @param col_number : The column number of the unexpected escape character
     """
     raise __throw_err(f"Lexical error\n"
-                      f"Unexpected escape character {WARNING}'{char}'{ERROR} at position {WARNING}{line_number}:{col_number}{ENDC}")
+                      f"Unexpected escape character {WARNING}'{char}'{ERROR}"
+                      f" at position {WARNING}{line_number}:{col_number}{ENDC}")
 
 
 def throw_non_printable_char_err(char, line_number, col_number):
