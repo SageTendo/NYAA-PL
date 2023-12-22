@@ -5,9 +5,9 @@ from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNo
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
     AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
     ContinueNode
+from src.core.Environment import Environment
 from src.core.LRUCache import cache_mem
 from src.core.RuntimeObject import RunTimeObject
-from src.core.SymbolTable import SymbolTable
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg
 
 MAX_VISIT_DEPTH = 5470
@@ -18,7 +18,7 @@ SYS_RECURSION_LIMIT = 1000000
 class Interpreter(AComponent):
     def __init__(self):
         super().__init__()
-        self.symbol_table = SymbolTable()
+        self.current_env = Environment(name="global", level=1)
 
         #  Control flow flags
         self.conditional_flag = False
@@ -93,7 +93,7 @@ class Interpreter(AComponent):
         runtime_obj = self.__test_for_identifier(runtime_obj)
         return runtime_obj.value
 
-    def __test_for_identifier(self, runtime_object: 'RunTimeObject'):
+    def __test_for_identifier(self, runtime_object: 'RunTimeObject', current_scope=False):
         """
         Checks if the runtime object is an identifier, and returns
         the value held by the identifier
@@ -101,7 +101,7 @@ class Interpreter(AComponent):
         @return: The non-identifier runtime object
         """
         if runtime_object.label == "identifier":
-            return self.symbol_table.get_variable(runtime_object.value)
+            return self.current_env.lookup_variable(runtime_object.value, current_scope=current_scope)
         else:
             return runtime_object
 
@@ -114,12 +114,12 @@ class Interpreter(AComponent):
         if node.eof:
             return
 
-        # visit function definitions
         for func in node.functions:
             func.accept(self)
 
         # visit body
-        return node.body.accept(self)
+        node.body.accept(self)
+        self.current_env = None
 
     def visit_func_def(self, node: 'FuncDefNode'):
         """
@@ -127,15 +127,13 @@ class Interpreter(AComponent):
         and its properties to the symbol table
         @param node: The function definition node to visit
         """
-        # Handle function parameters
         params = {}
         if node.args:
             for arg in node.args.accept(self):
-                params[arg.value] = None
+                params[arg.value] = arg.type
 
-        # Add function and props to symbol table
         function_props = {'params': params, 'body': node.body}
-        self.symbol_table.add_function_props(node.identifier, function_props)
+        self.current_env.insert_function_props(node.identifier, function_props)
 
     def visit_body(self, node: 'BodyNode'):
         """
@@ -267,8 +265,9 @@ class Interpreter(AComponent):
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
 
-        rhs = self.__test_for_identifier(rhs)
-        self.symbol_table.add_variable(lhs.value, RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))
+        rhs = self.__test_for_identifier(rhs, current_scope=True)
+        self.current_env.insert_variable(lhs.value,
+                                         RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))
         return rhs
 
     def visit_call(self, node: 'CallNode'):
@@ -284,14 +283,16 @@ class Interpreter(AComponent):
             raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
-        # Store current symbol table
-        old_table = self.symbol_table
+        #  Create a local scope for the current function call
+        local_env = Environment(name=node.identifier,
+                                level=self.current_env.level + 1,
+                                parent=self.current_env
+                                )
 
-        # Get args for params
-        function_identifier = node.identifier
+        function_body = self.current_env.lookup_function_body(node.identifier)
         if node.args:
             args = node.args.accept(self)
-            params = self.symbol_table.get_function_params(function_identifier)
+            params = self.current_env.lookup_function_params(node.identifier)
 
             # Check for invalid number of args
             if len(args) != len(params):
@@ -300,27 +301,22 @@ class Interpreter(AComponent):
                     f"expected {len(params)} "
                     f"but got {len(args)}")
 
-            # Create a local symbol table
-            self.symbol_table = old_table.copy()
-
             # Assign args to params (setting local vars)
             for i, param in enumerate(params):
                 arg_runtime_object = self.__test_for_identifier(args[i])
-                self.symbol_table.add_variable(param, arg_runtime_object)
-
-        # Visit function body
-        function_body = self.symbol_table.get_function_body(function_identifier)
+                local_env.insert_variable(param, arg_runtime_object)
+        self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
-        table_hash = hash(self.symbol_table)
+        table_hash = hash(self.current_env)
         if result := cache_mem.get(table_hash):
             result = self.__test_for_identifier(result)
         elif result := function_body.accept(self):
             result = self.__test_for_identifier(result)
             cache_mem.put(table_hash, result)
 
-        # Restore previous symbol table and internal recursion depth
-        self.symbol_table = old_table
+        # Restore previous environment and internal recursion depth
+        self.current_env = self.current_env.parent
         self.__internal_recursion_depth -= 1
         return result
 
@@ -355,8 +351,6 @@ class Interpreter(AComponent):
 
         # Variable value is stored as RunTimeObject
         runtime_object = self.__test_for_identifier(lhs)
-
-        # Increment or decrement variable value
         if node.op == "++":
             runtime_object.value += 1
         elif node.op == '--':
@@ -529,7 +523,7 @@ class Interpreter(AComponent):
                 if right.label == "number":
                     return RunTimeObject("number", -right.value)
                 else:
-                    var_runtime_object = self.symbol_table.get_variable(right.value).copy()
+                    var_runtime_object = self.current_env.lookup_variable(right.value).copy()
                     if var_runtime_object.label != 'number':
                         raise TypeError("You gave me something that's not a number")
 
