@@ -32,7 +32,7 @@ class Environment:
         if not current_scope and self.parent:
             return self.parent.lookup_variable(name)
 
-        raise Exception(f"Variable '{name}' not found in {self.__name} scope")
+        raise Exception(f"Variable '{name}' not found in '{self.__name}' scope")
 
     def insert_function_props(self, name: str, value: dict):
         """
@@ -65,7 +65,7 @@ class Environment:
         if not current_scope and self.parent:
             return self.parent.lookup_function_props(name)
 
-        raise Exception(f"Function '{name}' not found in {self.__name}")
+        raise Exception(f"Function '{name}' not found in '{self.__name}' scope")
 
     def lookup_function_params(self, name):
         """
