@@ -18,7 +18,8 @@ SYS_RECURSION_LIMIT = 1000000
 class Interpreter(AComponent):
     def __init__(self):
         super().__init__()
-        self.current_env = Environment(name="global", level=1)
+        self.global_env = Environment(name="global", level=1)
+        self.current_env = self.global_env
 
         #  Control flow flags
         self.conditional_flag = False
@@ -283,11 +284,12 @@ class Interpreter(AComponent):
             raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
                                  "that's not very kawaii of you... (◡﹏◡✿)")
 
-        #  Create a local scope for the current function call
+        #  Create a local scope for the current function call and keep reference of the previous scope
         local_env = Environment(name=node.identifier,
                                 level=self.current_env.level + 1,
-                                parent=self.current_env
+                                parent=self.global_env
                                 )
+        old_env = self.current_env
 
         function_body = self.current_env.lookup_function_body(node.identifier)
         if node.args:
@@ -316,7 +318,7 @@ class Interpreter(AComponent):
             cache_mem.put(table_hash, result)
 
         # Restore previous environment and internal recursion depth
-        self.current_env = self.current_env.parent
+        self.current_env = old_env
         self.__internal_recursion_depth -= 1
         return result
 
