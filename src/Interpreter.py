@@ -132,9 +132,7 @@ class Interpreter(AComponent):
         if node.args:
             for arg in node.args.accept(self):
                 params[arg.value] = arg.type
-
-        function_props = {'params': params, 'body': node.body}
-        self.current_env.insert_function_props(node.identifier, function_props)
+        self.current_env.insert_function(node.identifier, params, node.body)
 
     def visit_body(self, node: 'BodyNode'):
         """
@@ -291,20 +289,20 @@ class Interpreter(AComponent):
                                 )
         old_env = self.current_env
 
-        function_body = self.current_env.lookup_function_body(node.identifier)
+        # Get the function symbol from the symbol table
+        function_symbol = self.current_env.lookup_function(node.identifier)
         if node.args:
             args = node.args.accept(self)
-            params = self.current_env.lookup_function_params(node.identifier)
 
             # Check for invalid number of args
-            if len(args) != len(params):
+            if len(args) != len(function_symbol.params):
                 raise TypeError(
                     f"Invalid number of arguments provided, "
-                    f"expected {len(params)} "
+                    f"expected {len(function_symbol.params)} "
                     f"but got {len(args)}")
 
             # Assign args to params (setting local vars)
-            for i, param in enumerate(params):
+            for i, param in enumerate(function_symbol.params):
                 arg_runtime_object = self.__test_for_identifier(args[i])
                 local_env.insert_variable(param, arg_runtime_object)
         self.current_env = local_env
@@ -313,7 +311,7 @@ class Interpreter(AComponent):
         table_hash = hash(self.current_env)
         if result := cache_mem.get(table_hash):
             result = self.__test_for_identifier(result)
-        elif result := function_body.accept(self):
+        elif result := function_symbol.body.accept(self):
             result = self.__test_for_identifier(result)
             cache_mem.put(table_hash, result)
 
