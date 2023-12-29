@@ -7,7 +7,7 @@ kawaii test(x, y) => {
 }
 
 uWu_nyaa() => {
-    a wa ohayo("Enter 0 or 1: ")
-    b wa ohayo("Enter 0 or 1: ")
+    a wa 10
+    b wa 10
     test(a, b)
 }

@@ -1,9 +1,9 @@
-kawaii greet(name) => {
-    yomu("Hello,", name, "!")
-    yomu("How are you today?")
+kawaii add() => {
+    modoru 3 purodakuto 3
 }
 
 uWu_nyaa() => {
-    a wa "nyaa"
-    greet(a)
+    a wa 3
+    a wa add()
+    yomu(a)
 }
