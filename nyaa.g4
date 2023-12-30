@@ -29,12 +29,10 @@ statement          : PASS
                     |printStatement
                     |inputStatement
                     |callStatement
-                    |postfixExpression
-                    |tryCatchStatement;
+                    |postfixExpression;
 
 assignmentStatement: ID ASSIGN (expression | callableStatements);
 retStatement       : RET expression?;
-tryCatchStatement  : TRY LBRACE body RBRACE EXCEPT LBRACE body RBRACE;
 
 // Args
 args               : LPAR ((expression|callableStatements) (',' (expression|callableStatements))*)? RPAR;
@@ -93,8 +91,6 @@ BREAK: 'yamete';
 CONTINUE: 'motto';
 PASS: 'pasu';
 DEFINE: 'kawaii';
-TRY: 'ganbatte';
-EXCEPT: 'gomenasai';
 TRUE: 'HAI';
 FALSE: 'IIE';
 RET : 'modoru';

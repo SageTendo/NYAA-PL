@@ -51,13 +51,4 @@ uWu_nyaa() => {
         lol()
     }
 
-    ganbatte {
-        yomu("TRY")
-        a wa 3
-        b wa a purasu "g"
-    }
-    gomenasai {
-        yomu("ERR")
-        b wa a purasu "b"
-    }
 }

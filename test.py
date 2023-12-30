@@ -6,7 +6,7 @@ from unittest import TestCase
 from src.Interpreter import Interpreter
 from src.Lexer import Lexer
 from src.Parser import Parser
-from src.utils.ErrorHandler import SUCCESS, ENDC, WARNING
+from src.utils.Constants import WARNING, SUCCESS, ENDC
 
 
 class TestNyaa(TestCase):

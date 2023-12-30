@@ -19,7 +19,6 @@ class TokenType(Enum):
     DEF = auto()  # kawaii
     IF = auto()  # if
     WHILE = auto()  # while
-    TRY = auto()  # ganbatte
     INPUT = auto()  # ohayo
     PRINT = auto()  # printu
     # Breaks
@@ -32,7 +31,6 @@ class TokenType(Enum):
     ELIF = auto()  # elif
     ELSE = auto()  # else
     ASSIGN = auto()  # wa
-    EXCEPT = auto()  # gome
 
     # Non-alphabetic operators
     TO = auto()  # =>
@@ -73,7 +71,7 @@ class TokenType(Enum):
         return token.type in [
             TokenType.PASS, TokenType.RET,
             TokenType.ID, TokenType.WHILE, TokenType.IF,
-            TokenType.PRINT, TokenType.INPUT, TokenType.TRY
+            TokenType.PRINT, TokenType.INPUT
         ]
 
     @classmethod

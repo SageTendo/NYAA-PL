@@ -8,7 +8,8 @@ from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNo
 from src.core.Environment import Environment
 from src.core.LRUCache import cache_mem
 from src.core.RuntimeObject import RunTimeObject
-from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg
+from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg, emoji, \
+    InterpreterError, ErrorType
 
 MAX_VISIT_DEPTH = 5470
 INTERNAL_RECURSION_LIMIT = 1010
@@ -40,8 +41,16 @@ class Interpreter(AComponent):
         try:
             return ast.accept(self)
         except RecursionError as e:
-            print("Visitor Error (´｡• ω •｡`):", e, file=sys.stderr)
+            print(f"{emoji()} Visitor Error:", e, file=sys.stderr)
             exit(1)
+        except NotImplementedError as e:
+            # visit method not implemented
+            print(f"{emoji()} Visit Error:", e, file=sys.stderr)
+            exit(1)
+        except TypeError as e:
+            print(f"{emoji()} Type Error:", e, file=sys.stderr)
+        except RuntimeError as e:
+            print(f"{emoji()} Runtime Error:", e, file=sys.stderr)
 
     def visit(self, node):
         """
@@ -75,14 +84,7 @@ class Interpreter(AComponent):
             return result
         except RecursionError as e:
             # Recursion depth exceeded by user defined functions
-            print("Recursion Error:", e, file=sys.stderr)
-            exit(1)
-        except NotImplementedError as e:
-            # visit method not implemented
-            print("Visit Error:", e, file=sys.stderr)
-            exit(1)
-        except TypeError as e:
-            print("Type Error: (╬ Ò﹏Ó)", e, file=sys.stderr)
+            print(f"{emoji()} Recursion Error:", e, file=sys.stderr)
             exit(1)
 
     def __get_runtime_value(self, runtime_obj: 'RunTimeObject'):
@@ -418,7 +420,7 @@ class Interpreter(AComponent):
                 return self.handle_relational_expressions(left, right, node.op)
 
             # Invalid operation
-            throw_invalid_operation_err(left.value, node.op, right.value)
+            throw_invalid_operation_err(left.label, node.op, right.label)
         return left
 
     @staticmethod
@@ -444,7 +446,7 @@ class Interpreter(AComponent):
             return RunTimeObject(left.label, left.value or right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.value, op, right.value)
+        throw_invalid_operation_err(left.label, op, right.label)
 
     @staticmethod
     def handle_multiplicative_expressions(left, right, op):
@@ -467,13 +469,14 @@ class Interpreter(AComponent):
 
             if left.label == "number" and left.label == right.label:
                 if right.value == 0:
-                    raise ZeroDivisionError("Runtime error: Division by zero")
+                    raise InterpreterError(ErrorType.RUNTIME,
+                                           "Division by zero is not kawaii, please don't do that.", -1, -1)
                 return RunTimeObject("number", left.value / right.value)
         elif op == 'and':
             return RunTimeObject(right.label, left.value and right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.value, op, right.value)
+        throw_invalid_operation_err(left.label, op, right.label)
 
     @staticmethod
     def handle_relational_expressions(left, right, op):
@@ -497,7 +500,7 @@ class Interpreter(AComponent):
             return RunTimeObject("boolean", res)
 
         # Invalid operation
-        throw_invalid_operation_err(left.value, op, right.value)
+        throw_invalid_operation_err(left.label, op, right.label)
 
     def visit_factor(self, node: 'FactorNode'):
         """
@@ -518,14 +521,15 @@ class Interpreter(AComponent):
                 return RunTimeObject("boolean", not right.value)
             elif left.value == '-':
                 if right.label not in ["identifier", "number"]:
-                    throw_unary_type_err(left.value, right.value)
+                    throw_unary_type_err(left.value, right.label)
 
                 if right.label == "number":
                     return RunTimeObject("number", -right.value)
                 else:
                     var_runtime_object = self.current_env.lookup_variable(right.value).copy()
                     if var_runtime_object.label != 'number':
-                        raise TypeError("You gave me something that's not a number")
+                        raise InterpreterError(ErrorType.TYPE,
+                                               "You gave me something that's not a number", -1, -1)
 
                     # Negate the value
                     var_runtime_object.value *= -1

@@ -54,12 +54,6 @@ uWu_nyaa() => {
         lol()
     }
 
-    ganbatte {
-        yomu("TRY")
-    }
-    gomenasai {
-        yomu("ERR")
-    }
 
     daijoubu (HAI) {
         yomu()

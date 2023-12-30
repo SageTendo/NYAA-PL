@@ -4,7 +4,7 @@ from src.core.ASTNodes import BodyNode, ReturnNode, PassNode, ProgramNode, Simpl
     IdentifierNode, \
     PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
     CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, TryCatchNode, FuncDefNode, TermNode, OperatorNode
+    WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode
 from src.core.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err
 
@@ -61,7 +61,7 @@ class Parser(AComponent):
         if TokenType.bin_op(self.curr_tkn) or TokenType(self.curr_tkn.type):
             self.consume_token()
         else:
-            throw_unexpected_token_err(self.curr_tkn.type, "OP_TYPE", self.__lexer.get_line_number(),
+            throw_unexpected_token_err(self.curr_tkn.type, "[OPERATOR_TYPE]", self.__lexer.get_line_number(),
                                        self.__lexer.get_col_number())
 
     def consume_token(self):
@@ -110,6 +110,7 @@ class Parser(AComponent):
         @return: The AST
         """
         program_node = ProgramNode()
+        program_node.start_pos = self.__lexer.get_col_number()
 
         if self.curr_tkn.type == TokenType.ENDMARKER:
             program_node.set_eof()
@@ -138,6 +139,8 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.RBRACE)
 
         self.debug("</Statements>")
+
+        program_node.end_pos = self.__lexer.get_col_number()
         return program_node
 
     def parse_body(self):
@@ -173,8 +176,7 @@ class Parser(AComponent):
         """
         statement:  PASS | retStatement | assignmentStatement |
                     whileStatement | ifStatement | printStatement |
-                    inputStatement | callStatement | postfixStatement |
-                    tryCatchStatement
+                    inputStatement | callStatement | postfixStatement
         @return: A statement node
         """
         statement_node = None
@@ -213,9 +215,10 @@ class Parser(AComponent):
                 self.debug("</FuncCall>")
 
             else:
+                self.__expect_and_consume(TokenType.ID)
                 throw_unexpected_token_err(
                     self.curr_tkn.type,
-                    "ASSIGNMENT_TYPE / POSTFIX_TYPE / FUNC_CALL_TYPE",
+                    "[ASSIGNMENT_TYPE or POSTFIX_TYPE or FUNC_CALL_TYPE]",
                     self.__lexer.get_line_number(),
                     self.__lexer.get_col_number())
         else:
@@ -242,12 +245,6 @@ class Parser(AComponent):
                 self.debug("<Input>")
                 statement_node = self.parse_input()
                 self.debug("</Input>")
-
-            # try-catch statement
-            elif self.match(TokenType.TRY):
-                self.debug("<TryCatch>")
-                statement_node = self.parse_try_catch()
-                self.debug("</TryCatch>")
 
         return statement_node
 
@@ -427,28 +424,6 @@ class Parser(AComponent):
 
         return body
 
-    def parse_try_catch(self):
-        """
-        TryCatchStatement: TRY { body } CATCH { catchBody }
-        @return: TryCatchNode
-        """
-        self.__expect_and_consume(TokenType.TRY)
-
-        self.__expect_and_consume(TokenType.LBRACE)
-        self.debug("<Body>")
-        try_body = self.parse_body()
-        self.debug("</Body>")
-        self.__expect_and_consume(TokenType.RBRACE)
-
-        self.__expect_and_consume(TokenType.EXCEPT)
-        self.__expect_and_consume(TokenType.LBRACE)
-        self.debug("<Body>")
-        catch_body = self.parse_body()
-        self.debug("</Body>")
-        self.__expect_and_consume(TokenType.RBRACE)
-
-        return TryCatchNode(try_body, catch_body)
-
     def parse_return(self):
         """
         ReturnStatement: RETURN expr?
@@ -559,7 +534,7 @@ class Parser(AComponent):
 
         if not TokenType.expression(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "EXPRESSION_TYPE", self.__lexer.get_line_number(),
+                self.curr_tkn.type, "[EXPRESSION_TYPE]", self.__lexer.get_line_number(),
                 self.__lexer.get_col_number())
 
         self.debug("<SimpleExpr>")
@@ -584,7 +559,7 @@ class Parser(AComponent):
 
         if not TokenType.term(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "SIMPLE_EXPR_TYPE", self.__lexer.get_line_number(),
+                self.curr_tkn.type, "[SIMPLE_EXPR_TYPE]", self.__lexer.get_line_number(),
                 self.__lexer.get_col_number())
 
         self.debug("<Term>")
@@ -608,7 +583,7 @@ class Parser(AComponent):
         term = TermNode()
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "TERM_TYPE", self.__lexer.get_line_number(),
+                self.curr_tkn.type, "[TERM_TYPE]", self.__lexer.get_line_number(),
                 self.__lexer.get_col_number())
 
         self.debug("<Factor>")
@@ -632,7 +607,7 @@ class Parser(AComponent):
         factor_node = None
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "FACTOR_TYPE", self.__lexer.get_line_number(),
+                self.curr_tkn.type, "[FACTOR_TYPE]", self.__lexer.get_line_number(),
                 self.__lexer.get_col_number())
 
         if self.match(TokenType.ID):
@@ -706,7 +681,7 @@ class Parser(AComponent):
         elif TokenType.expression(self.curr_tkn):
             return self.parse_expr()
         else:
-            throw_unexpected_token_err(self.curr_tkn.type, "EXPR / STATEMENT_TOKENS / DEFINE",
+            throw_unexpected_token_err(self.curr_tkn.type, "[EXPR or STATEMENT_TYPE or DEFINE]",
                                        self.__lexer.get_line_number(), self.__lexer.get_col_number())
 
     def parse_source(self, source_path=None, repl_input=None, dflags=None):

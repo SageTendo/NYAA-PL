@@ -1,6 +1,6 @@
 import sys
 
-from src.utils.ErrorHandler import SUCCESS, ENDC
+from src.utils.Constants import SUCCESS, ENDC
 
 
 class Repl:

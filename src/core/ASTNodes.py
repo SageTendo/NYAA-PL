@@ -6,6 +6,8 @@ from src.core.LRUCache import cache_mem
 class Node:
     def __init__(self, node_label):
         self.label = node_label
+        self.start_pos = None
+        self.end_pos = None
 
     def accept(self, visitor):
         # Check cache for node visiter
@@ -108,13 +110,6 @@ class ReturnNode(Node):
 
     def set_expr(self, expr):
         self.expr = expr
-
-
-class TryCatchNode(Node):
-    def __init__(self, body, catch_body):
-        super().__init__("try_catch")
-        self.body = body
-        self.catch_body = catch_body
 
 
 class ArgsNode(Node):

@@ -2,39 +2,22 @@ from src.core.AComponent import AComponent
 from src.core.Token import Token
 from src.core.Types import TokenType
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
-from src.utils.ErrorHandler import throw_unexpected_char_err, throw_identifier_length_err, \
-    throw_unexpected_escape_char_err, throw_non_printable_char_err, throw_unexpected_eof_err, throw_string_length_err
+from src.utils.ErrorHandler import LexerError
 
 RESERVED_WORDS = {
-    "uWu_nyaa": TokenType.MAIN,
-    "yomu": TokenType.PRINT,
-    "ohayo": TokenType.INPUT,
-    "daijoubu": TokenType.WHILE,
-    "nani": TokenType.IF,
-    "nandesuka": TokenType.ELIF,
-    "baka": TokenType.ELSE,
-    'yamete': TokenType.BREAK,
-    'pasu': TokenType.PASS,
-    'motto': TokenType.CONTINUE,
-    'kawaii': TokenType.DEF,
-    'ganbatte': TokenType.TRY,
-    'gomenasai': TokenType.EXCEPT,
-    'HAI': TokenType.TRUE,
-    'IIE': TokenType.FALSE,
-    'wa': TokenType.ASSIGN,
-    "modoru": TokenType.RET,
-    'purasu': TokenType.PLUS,
-    'mainasu': TokenType.MINUS,
-    'purodakuto': TokenType.MULTIPLY,
-    'supuritto': TokenType.DIVIDE,
-    'ando': TokenType.AND,
-    'matawa': TokenType.OR,
+    "uWu_nyaa": TokenType.MAIN, "yomu": TokenType.PRINT, "ohayo": TokenType.INPUT,
+    "daijoubu": TokenType.WHILE, "nani": TokenType.IF, "nandesuka": TokenType.ELIF,
+    "baka": TokenType.ELSE, 'yamete': TokenType.BREAK, 'pasu': TokenType.PASS,
+    'motto': TokenType.CONTINUE, 'kawaii': TokenType.DEF, 'HAI': TokenType.TRUE,
+    'IIE': TokenType.FALSE, 'wa': TokenType.ASSIGN, "modoru": TokenType.RET,
+    'purasu': TokenType.PLUS, 'mainasu': TokenType.MINUS, 'purodakuto': TokenType.MULTIPLY,
+    'supuritto': TokenType.DIVIDE, 'ando': TokenType.AND, 'matawa': TokenType.OR,
     'nai': TokenType.NOT
 }
 
 
 class Lexer(AComponent):
-    class _Position:
+    class __Position:
         def __init__(self, line_number, column_number):
             self.line_number = line_number
             self.column_number = column_number
@@ -48,10 +31,10 @@ class Lexer(AComponent):
         self.__last_read_ch = ""
         self.__column_number = 0
         self.__line_number = 1
-        self.__position = self._Position(1, 0)
+        self.__position = self.__Position(1, 0)
         self.__buffer = []
 
-    def _next_char(self):
+    def __next_char(self):
         """
         Get the next character from the program file
         """
@@ -82,7 +65,7 @@ class Lexer(AComponent):
             while c:
                 self.__program.append(c)
                 c = f.read(1)
-        self._next_char()
+        self.__next_char()
 
     def analyze_repl(self, repl_input):
         """
@@ -91,7 +74,7 @@ class Lexer(AComponent):
         """
         self.__init__()
         self.__program = list(repl_input)
-        self._next_char()
+        self.__next_char()
 
     def peek_token(self):
         """
@@ -116,101 +99,102 @@ class Lexer(AComponent):
 
         # Skip whitespace
         while self.__ch.isspace():
-            self._next_char()
+            self.__next_char()
 
         # Remember position for error reporting
-        self._store_position()
+        self.__store_position()
 
         # Scan for tokens
         if self.__ch != EOF:
 
             if self.__ch.isalpha() or self.__ch == '_':
-                self._process_word(token)
+                self.__process_word(token)
             elif self.__ch.isdigit():
-                self._process_number(token)
+                self.__process_number(token)
 
                 # Check for float
                 if self.__ch == '.':
-                    self._next_char()
-                    self._process_float(token)
+                    self.__next_char()
+                    self.__process_float(token)
             elif self.__ch == '"':
-                self._next_char()
+                self.__next_char()
                 self._process_string(token)
             else:
                 if self.__ch == '(':
                     token.type = TokenType.LPAR
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == ')':
                     token.type = TokenType.RPAR
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == '{':
                     token.type = TokenType.LBRACE
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == '}':
                     token.type = TokenType.RBRACE
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == ';':
                     token.type = TokenType.SEMICOLON
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == '=':
-                    self._next_char()
+                    self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.EQ
-                        self._next_char()
+                        self.__next_char()
                     elif self.__ch == '>':
                         token.type = TokenType.TO
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == '+':
-                    self._next_char()
+                    self.__next_char()
 
                     # Check for unary plus
                     if self.__ch == '+':
                         token.type = TokenType.UN_ADD
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == '-':
                     token.type = TokenType.NEG
-                    self._next_char()
+                    self.__next_char()
 
                     # Check for unary minus
                     if self.__ch == '-':
                         token.type = TokenType.UN_SUB
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == '%':
                     token.type = TokenType.MODULO
-                    self._next_char()
+                    self.__next_char()
                 elif self.__ch == '!':
                     token.type = TokenType.NOT
-                    self._next_char()
+                    self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.NEQ
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == "#":
-                    self._skip_comment()
+                    self.__skip_comment()
                     token = self.get_token()
                 elif self.__ch == '<':
                     token.type = TokenType.LT
-                    self._next_char()
+                    self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.LTE
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == '>':
                     token.type = TokenType.GT
-                    self._next_char()
+                    self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.GTE
-                        self._next_char()
+                        self.__next_char()
                 elif self.__ch == ',':
                     token.type = TokenType.COMMA
-                    self._next_char()
+                    self.__next_char()
                 else:
-                    throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                    raise LexerError(f"Unrecognized character '{self.__ch}'",
+                                     self.get_line_number(), self.get_col_number())
         else:
             token.type = TokenType.ENDMARKER
 
         self.debug(token)
         return token
 
-    def _process_word(self, token):
+    def __process_word(self, token):
         """
         Processes found identifiers or reserved words and
         returns a token with its associated type and value (the processed word).
@@ -226,13 +210,15 @@ class Lexer(AComponent):
 
             # Check for valid characters
             if not self.__ch.isalnum() and self.__ch != '_':
-                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                raise LexerError(f"Invalid character '{self.__ch}' in identifier",
+                                 self.get_line_number(), self.get_col_number())
             # Validate length of word
             if len(processed_word) + 1 == MAX_ID_LEN:
-                throw_identifier_length_err(self.__position.line_number, self.__column_number)
+                raise LexerError(f"Identifier exceeds the maximum length of {MAX_ID_LEN} characters",
+                                 self.get_line_number(), self.get_col_number())
             # Append character to word and ge the next character
             processed_word += self.__ch
-            self._next_char()
+            self.__next_char()
 
         # Check for reserved word
         if processed_word in RESERVED_WORDS:
@@ -243,7 +229,7 @@ class Lexer(AComponent):
         token.value = processed_word
         token.type = TokenType.ID
 
-    def _process_number(self, token):
+    def __process_number(self, token):
         """
         Processes found numbers and
         returns a token with its associated type and value (the processed number).
@@ -253,7 +239,7 @@ class Lexer(AComponent):
         # Initialize processed_number with the numeric value of the current character
         processed_number = ord(self.__ch) - ord('0')
 
-        self._next_char()
+        self.__next_char()
 
         # Continue processing while the current character is not an exit symbol
         while self.__ch.isdigit():
@@ -262,16 +248,17 @@ class Lexer(AComponent):
 
             #  Check if valid digit
             if next_digit < 0 or next_digit > 9:
-                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                raise LexerError(f"Invalid character '{self.__ch}' in number",
+                                 self.get_line_number(), self.get_col_number())
             # Append the next digit to processed number
             processed_number = (processed_number * 10) + next_digit
-            self._next_char()
+            self.__next_char()
 
         # Set the token's value and type based on the processed number
         token.value = processed_number
         token.type = TokenType.INT
 
-    def _process_float(self, token):
+    def __process_float(self, token):
         """
         Processes found floating point numbers and
         returns a token with its associated type and value (the processed float).
@@ -282,7 +269,7 @@ class Lexer(AComponent):
         processed_fraction = float(ord(self.__ch) - ord('0'))
         divisor = 10
 
-        self._next_char()
+        self.__next_char()
 
         # Continue processing while the current character is not an exit symbol
         while self.__ch.isdigit():
@@ -294,11 +281,12 @@ class Lexer(AComponent):
 
             #  Check if valid digit
             if next_digit < 0 or next_digit > 9:
-                throw_unexpected_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                raise LexerError(f"Invalid character '{self.__ch}' in float number",
+                                 self.get_line_number(), self.get_col_number())
 
             # Append the next digit to processed number
             processed_fraction = (processed_fraction * 10) + next_digit
-            self._next_char()
+            self.__next_char()
 
         # Set the token's value and type based on the processed number
         token.value = token.value + (processed_fraction / divisor)
@@ -316,7 +304,7 @@ class Lexer(AComponent):
         while self.__ch != '"':
             #  Escape characters
             if self.__ch == "\\":
-                self._next_char()
+                self.__next_char()
                 if self.__ch == 'n':
                     processed_string += '\n'
                 elif self.__ch == 't':
@@ -326,40 +314,44 @@ class Lexer(AComponent):
                 elif self.__ch == '\\':
                     processed_string += '\\'
                 else:
-                    throw_unexpected_escape_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                    raise LexerError("Invalid escape character", self.get_line_number(), self.get_col_number())
             # Reached end of file
             if self.__ch == EOF:
-                throw_unexpected_eof_err(self.__position.line_number, self.__column_number)
+                raise LexerError("Unterminated string", self.get_line_number(), self.get_col_number())
 
             # Check for Non-printables
             if not self.__ch.isprintable():
-                throw_non_printable_char_err(self.__ch, self.__position.line_number, self.__column_number)
+                raise LexerError(f"Non-printable ascii character with code: {ord(self.__ch)}",
+                                 self.get_line_number(), self.get_col_number())
             # Max string length reached
             if len(processed_string) + 1 > MAX_STR_LEN:
-                throw_string_length_err(self.__position.line_number, self.__column_number)
+                raise LexerError(f"String too long", self.get_line_number(), self.get_col_number())
 
             # Concat char to string and get next character
             processed_string += self.__ch
-            self._next_char()
-        self._next_char()
+            self.__next_char()
+        self.__next_char()
 
         # Set token params
         token.value = processed_string
         token.type = TokenType.STR
 
-    def _store_position(self):
+    def __store_position(self):
         """
         Store the current character's line and column number
         """
         self.__position.line_number = self.__line_number
         self.__position.column_number = self.__column_number
 
-    def _skip_comment(self):
+    def __skip_comment(self):
         """
         Skips comments found in the source
         """
         while self.__ch != '\n':
-            self._next_char()
+            self.__next_char()
+
+    def get_position(self):
+        return self.get_line_number(), self.get_col_number()
 
     def get_line_number(self):
         return self.__position.line_number
