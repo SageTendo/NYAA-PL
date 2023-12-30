@@ -1,11 +1,14 @@
 import os.path
 import subprocess
+import sys
 import unittest
 from unittest import TestCase
 
 from src.Interpreter import Interpreter
 from src.Lexer import Lexer
 from src.Parser import Parser
+from src.core.Token import Token
+from src.core.Types import TokenType
 from src.utils.Constants import WARNING, SUCCESS, ENDC
 
 
@@ -33,9 +36,16 @@ class TestNyaa(TestCase):
 
             try:
                 self.lexer.analyze_src_file(test_dir + file)
+
+                token = Token()
+                while token.type != TokenType.ENDMARKER:
+                    token = self.lexer.get_token()
+                    print(" ", token)
+
                 print(f"{SUCCESS}  Passed{ENDC}")
             except Exception as e:
-                print(e)
+                print(e, file=sys.stderr)
+                self.fail()
 
     def test_parser(self):
         header = "Testing Parser"
@@ -47,10 +57,11 @@ class TestNyaa(TestCase):
             print(f"[Parser] Running test on: {file}")
 
             try:
-                self.parser.parse_source(source_path=test_dir + file)
-                print(f"{SUCCESS}  Passed{ENDC}")
+                self.parser.parse_source(source_path=test_dir + file, dflags={"parser": True})
+                print(f"{SUCCESS}  Passed{ENDC}\n")
             except Exception as e:
-                print(e)
+                print(e, file=sys.stderr)
+                self.fail()
 
     def test_interpreter(self):
         header = "Testing Interpreter"

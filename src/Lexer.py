@@ -240,19 +240,15 @@ class Lexer(AComponent):
         @return: The token after processing the number
         """
         # Initialize processed_number with the numeric value of the current character
-        processed_number = ord(self.__ch) - ord('0')
+        processed_number = int(self.__ch)
 
         self.__next_char()
 
         # Continue processing while the current character is not an exit symbol
         while self.__ch.isdigit():
             # Calculate the numeric value of the next digit
-            next_digit = ord(self.__ch) - ord('0')
+            next_digit = int(self.__ch)
 
-            #  Check if valid digit
-            if next_digit < 0 or next_digit > 9:
-                raise LexerError(f"Invalid character '{self.__ch}' in number",
-                                 self.line_number, self.col_number)
             # Append the next digit to processed number
             processed_number = (processed_number * 10) + next_digit
             self.__next_char()
@@ -269,7 +265,7 @@ class Lexer(AComponent):
         @return: The token after processing the float
         """
         # Initialize processed_number with the numeric value of the current character
-        processed_fraction = float(ord(self.__ch) - ord('0'))
+        processed_fraction = float(self.__ch)
         divisor = 10
 
         self.__next_char()
@@ -280,12 +276,7 @@ class Lexer(AComponent):
             divisor *= 10
 
             # Calculate the numeric value of the next digit
-            next_digit = ord(self.__ch) - ord('0')
-
-            #  Check if valid digit
-            if next_digit < 0 or next_digit > 9:
-                raise LexerError(f"Invalid character '{self.__ch}' in float number",
-                                 self.get_line_number(), self.get_col_number())
+            next_digit = int(self.__ch)
 
             # Append the next digit to processed number
             processed_fraction = (processed_fraction * 10) + next_digit

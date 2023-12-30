@@ -34,5 +34,5 @@ class Token:
             val = self._value
 
         if val is not None:
-            return f"type: {self._type} -> {val}\n at {self.pos}"
-        return f"type: {self._type}\n at {self.pos}"
+            return f"type: {self._type} -> {val}"
+        return f"type: {self._type}"
