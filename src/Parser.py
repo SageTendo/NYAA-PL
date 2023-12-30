@@ -1,3 +1,5 @@
+import sys
+
 from src.Lexer import Lexer
 from src.core.AComponent import AComponent
 from src.core.ASTNodes import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, \
@@ -6,7 +8,7 @@ from src.core.ASTNodes import BodyNode, ReturnNode, PassNode, ProgramNode, Simpl
     CallNode, InputNode, BreakNode, ContinueNode, \
     WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode
 from src.core.Types import TokenType
-from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err
+from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err, ParserError, LexerError
 
 
 class Parser(AComponent):
@@ -51,8 +53,8 @@ class Parser(AComponent):
             self.consume_token()
         else:
             if self.curr_tkn != expected_type:
-                throw_unexpected_token_err(self.curr_tkn.type, expected_type, self.__lexer.get_line_number(),
-                                           self.__lexer.get_col_number())
+                throw_unexpected_token_err(self.curr_tkn.type, expected_type,
+                                           self.curr_tkn.line_num, self.curr_tkn.column_num)
 
     def __expect_and_consume_op(self):
         """
@@ -61,8 +63,8 @@ class Parser(AComponent):
         if TokenType.bin_op(self.curr_tkn) or TokenType(self.curr_tkn.type):
             self.consume_token()
         else:
-            throw_unexpected_token_err(self.curr_tkn.type, "[OPERATOR_TYPE]", self.__lexer.get_line_number(),
-                                       self.__lexer.get_col_number())
+            throw_unexpected_token_err(self.curr_tkn.type, "[OPERATOR_TYPE]",
+                                       self.curr_tkn.line_num, self.curr_tkn.column_num)
 
     def consume_token(self):
         """
@@ -110,10 +112,11 @@ class Parser(AComponent):
         @return: The AST
         """
         program_node = ProgramNode()
-        program_node.start_pos = self.__lexer.get_col_number()
+        program_node.start_pos = self.curr_tkn.pos
 
         if self.curr_tkn.type == TokenType.ENDMARKER:
             program_node.set_eof()
+            program_node.end_pos = self.curr_tkn.pos
             return program_node
 
         # parse function definitions
@@ -140,7 +143,8 @@ class Parser(AComponent):
 
         self.debug("</Statements>")
 
-        program_node.end_pos = self.__lexer.get_col_number()
+        self.__expect_and_consume(TokenType.ENDMARKER)
+        program_node.end_pos = self.curr_tkn.pos
         return program_node
 
     def parse_body(self):
@@ -149,8 +153,12 @@ class Parser(AComponent):
         @return: BodyNode
         """
         body = BodyNode()
+        body.start_pos = self.curr_tkn.pos
+
         while TokenType.statement_start(self.curr_tkn):
             body.append(self.parse_statement())
+
+        body.end_pos = self.curr_tkn.pos
         return body
 
     def parse_conditional_body(self):
@@ -159,6 +167,7 @@ class Parser(AComponent):
         @return: body
         """
         body = BodyNode()
+        body.start_pos = self.curr_tkn.pos
 
         while TokenType.statement_start(self.curr_tkn):
             body.append(self.parse_statement())
@@ -170,6 +179,7 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.CONTINUE)
             body.append(ContinueNode())
 
+        body.end_pos = self.curr_tkn.pos
         return body
 
     def parse_statement(self):
@@ -180,6 +190,7 @@ class Parser(AComponent):
         @return: A statement node
         """
         statement_node = None
+        start_pos = self.curr_tkn.pos
 
         # Pass statement
         if self.match(TokenType.PASS):
@@ -219,8 +230,7 @@ class Parser(AComponent):
                 throw_unexpected_token_err(
                     self.curr_tkn.type,
                     "[ASSIGNMENT_TYPE or POSTFIX_TYPE or FUNC_CALL_TYPE]",
-                    self.__lexer.get_line_number(),
-                    self.__lexer.get_col_number())
+                    self.curr_tkn.line_num, self.curr_tkn.column_num)
         else:
             # while statement
             if self.match(TokenType.WHILE):
@@ -246,6 +256,8 @@ class Parser(AComponent):
                 statement_node = self.parse_input()
                 self.debug("</Input>")
 
+        statement_node.start_pos = start_pos
+        statement_node.end_pos = self.curr_tkn.pos
         return statement_node
 
     def parse_func_def(self):
@@ -262,9 +274,9 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.LPAR)
             self.__expect_and_consume(TokenType.RPAR)
         else:
-            self.debug("<Args>")
-            args = self.parse_args()
-            self.debug("</Args>")
+            self.debug("<Params>")
+            args = self.parse_params()
+            self.debug("</Params>")
 
         self.__expect_and_consume(TokenType.TO)
         if TokenType.statement_start(self.curr_tkn):
@@ -285,13 +297,19 @@ class Parser(AComponent):
         funcCall: ID args
         @return: CallNode
         """
+        start_pos = self.curr_tkn.pos
+
         identifier = self.curr_tkn.value
         self.__expect_and_consume(TokenType.ID)
 
         self.debug("<Args>")
         args = self.parse_args()
         self.debug("</Args>")
-        return CallNode(identifier, args)
+
+        call_node = CallNode(identifier, args)
+        call_node.start_pos = start_pos
+        call_node.end_pos = self.curr_tkn.pos
+        return call_node
 
     def parse_postfix(self):
         """
@@ -314,6 +332,8 @@ class Parser(AComponent):
         Assignment: ID ASSIGN (expr | callable)
         @return: AssignmentNode
         """
+        start_pos = self.curr_tkn.pos
+
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -327,7 +347,10 @@ class Parser(AComponent):
             right_node = self.parse_expr()
             self.debug("</Expr>")
 
-        return AssignmentNode(left_node, right_node)
+        assignment_node = AssignmentNode(left_node, right_node)
+        assignment_node.start_pos = start_pos
+        assignment_node.end_pos = self.curr_tkn.pos
+        return assignment_node
 
     def parse_while(self):
         """
@@ -429,6 +452,8 @@ class Parser(AComponent):
         ReturnStatement: RETURN expr?
         @return: ReturnNode
         """
+        start_pos = self.curr_tkn.pos
+
         self.__expect_and_consume(TokenType.RET)
 
         return_node = ReturnNode()
@@ -437,6 +462,9 @@ class Parser(AComponent):
             self.debug("<Expr>")
             return_node.set_expr(self.parse_expr())
             self.debug("</Expr>")
+
+        return_node.start_pos = start_pos
+        return_node.end_pos = self.curr_tkn.pos
         return return_node
 
     def parse_print(self):
@@ -444,19 +472,25 @@ class Parser(AComponent):
         PrintStatement: PRINT args
         @return: PrintNode
         """
-        self.__expect_and_consume(TokenType.PRINT)
+        start_pos = self.curr_tkn.pos
 
+        self.__expect_and_consume(TokenType.PRINT)
         self.debug("<Args>")
         args = self.parse_args()
         self.debug("</Args>")
 
-        return PrintNode(args)
+        print_node = PrintNode(args)
+        print_node.start_pos = start_pos
+        print_node.end_pos = self.curr_tkn.pos
+        return print_node
 
     def parse_input(self):
         """
         InputStatement: INPUT (STR)?
         @return: InputNode
         """
+        start_pos = self.curr_tkn.pos
+
         self.__expect_and_consume(TokenType.INPUT)
         self.__expect_and_consume(TokenType.LPAR)
 
@@ -465,7 +499,42 @@ class Parser(AComponent):
             msg = self.curr_tkn.value
             self.__expect_and_consume(TokenType.STR)
         self.__expect_and_consume(TokenType.RPAR)
-        return InputNode(msg)
+
+        input_node = InputNode(msg)
+        input_node.start_pos = start_pos
+        input_node.end_pos = self.curr_tkn.pos
+        return input_node
+
+    def parse_params(self):
+        """
+        params: param (',' param)*
+        @return: ArgsNode
+        """
+        params = ArgsNode()
+        params.start_pos = self.curr_tkn.pos
+
+        self.__expect_and_consume(TokenType.LPAR)
+        if not (self.match(TokenType.ID) or self.match(TokenType.RPAR)):
+            throw_unexpected_token_err(self.curr_tkn.type, "[ID or RPAR]",
+                                       self.curr_tkn.line_num, self.curr_tkn.column_num)
+
+        if self.match(TokenType.ID):
+            self.debug("<Param>")
+            params.append(IdentifierNode(self.curr_tkn))
+            self.__expect_and_consume(TokenType.ID)
+            self.debug("</Param>")
+
+            while self.match(TokenType.COMMA):
+                self.__expect_and_consume(TokenType.COMMA)
+
+                self.debug("<Param>")
+                params.append(IdentifierNode(self.curr_tkn))
+                self.__expect_and_consume(TokenType.ID)
+                self.debug("</Param>")
+        self.__expect_and_consume(TokenType.RPAR)
+
+        params.end_pos = self.curr_tkn.pos
+        return params
 
     def parse_args(self):
         """
@@ -473,6 +542,7 @@ class Parser(AComponent):
         @return: ArgsNode
         """
         args = ArgsNode()
+        args.start_pos = self.curr_tkn.pos
 
         self.__expect_and_consume(TokenType.LPAR)
         if TokenType.expression(self.curr_tkn) or TokenType.callable(self.curr_tkn):
@@ -488,6 +558,7 @@ class Parser(AComponent):
                 self.debug("</Arg>")
         self.__expect_and_consume(TokenType.RPAR)
 
+        args.end_pos = self.curr_tkn.pos
         return args
 
     def parse_arg(self):
@@ -511,6 +582,8 @@ class Parser(AComponent):
         @return: PrintNode | InputNode | CallNode
         """
         call_node = None
+        start_pos = self.curr_tkn.pos
+
         if self.match(TokenType.PRINT):
             self.debug("<Print>")
             call_node = self.parse_print()
@@ -523,6 +596,9 @@ class Parser(AComponent):
             self.debug("<FuncCall>")
             call_node = self.parse_func_call()
             self.debug("</FuncCall>")
+
+        call_node.start_pos = start_pos
+        call_node.end_pos = self.curr_tkn.pos
         return call_node
 
     def parse_expr(self):
@@ -531,11 +607,12 @@ class Parser(AComponent):
         @return: ExprNode
         """
         expr_node = ExprNode()
+        expr_node.start_pos = self.curr_tkn.pos
 
         if not TokenType.expression(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "[EXPRESSION_TYPE]", self.__lexer.get_line_number(),
-                self.__lexer.get_col_number())
+                self.curr_tkn.type, "[EXPRESSION_TYPE]",
+                self.curr_tkn.line_num, self.curr_tkn.column_num)
 
         self.debug("<SimpleExpr>")
         expr_node.left = self.parse_simple_expr()
@@ -548,6 +625,7 @@ class Parser(AComponent):
             expr_node.right = self.parse_expr()
             self.debug("</Expr>")
 
+        expr_node.end_pos = self.curr_tkn.pos
         return expr_node
 
     def parse_simple_expr(self):
@@ -556,11 +634,12 @@ class Parser(AComponent):
         @return: SimpleExprNode
         """
         simple_expr = SimpleExprNode()
+        simple_expr.start_pos = self.curr_tkn.pos
 
         if not TokenType.term(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "[SIMPLE_EXPR_TYPE]", self.__lexer.get_line_number(),
-                self.__lexer.get_col_number())
+                self.curr_tkn.type, "[SIMPLE_EXPR_TYPE]",
+                self.curr_tkn.line_num, self.curr_tkn.column_num)
 
         self.debug("<Term>")
         simple_expr.left = self.parse_term()
@@ -573,6 +652,7 @@ class Parser(AComponent):
             simple_expr.right = self.parse_simple_expr()
             self.debug("</SimpleExpr>")
 
+        simple_expr.end_pos = self.curr_tkn.pos
         return simple_expr
 
     def parse_term(self):
@@ -581,10 +661,12 @@ class Parser(AComponent):
         @return: TermNode
         """
         term = TermNode()
+        term.start_pos = self.curr_tkn.pos
+
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "[TERM_TYPE]", self.__lexer.get_line_number(),
-                self.__lexer.get_col_number())
+                self.curr_tkn.type, "[TERM_TYPE]", self.curr_tkn.line_num,
+                self.curr_tkn.column_num)
 
         self.debug("<Factor>")
         term.left = self.parse_factor()
@@ -597,6 +679,7 @@ class Parser(AComponent):
             term.right = self.parse_term()
             self.debug("</Term>")
 
+        term.end_pos = self.curr_tkn.pos
         return term
 
     def parse_factor(self):
@@ -607,8 +690,8 @@ class Parser(AComponent):
         factor_node = None
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
-                self.curr_tkn.type, "[FACTOR_TYPE]", self.__lexer.get_line_number(),
-                self.__lexer.get_col_number())
+                self.curr_tkn.type, "[FACTOR_TYPE]", self.curr_tkn.line_num,
+                self.curr_tkn.column_num)
 
         if self.match(TokenType.ID):
 
@@ -682,7 +765,7 @@ class Parser(AComponent):
             return self.parse_expr()
         else:
             throw_unexpected_token_err(self.curr_tkn.type, "[EXPR or STATEMENT_TYPE or DEFINE]",
-                                       self.__lexer.get_line_number(), self.__lexer.get_col_number())
+                                       self.curr_tkn.line_num, self.curr_tkn.column_num)
 
     def parse_source(self, source_path=None, repl_input=None, dflags=None):
         """
@@ -701,17 +784,26 @@ class Parser(AComponent):
         parser_flag = dflags.get("parser", False)
         self.verbose(parser_flag)
 
-        # Prepare lexer
         if source_path:
-            self.__lexer.analyze_src_file(source_path)
-            self.consume_token()
+            try:
+                # Prepare lexer
+                self.__lexer.analyze_src_file(source_path)
+                self.consume_token()
 
-            # Parse source code
-            self.debug("<Program>")
-            ast = self.parse_program()
-            self.debug("</Program>")
-            return ast
+                # Parse source code
+                self.debug("<Program>")
+                ast = self.parse_program()
+                self.debug("</Program>")
+                return ast
+            except ParserError as e:
+                print(e, file=sys.stderr)
+                exit(1)
+            except LexerError as e:
+                print(e, file=sys.stderr)
+                exit(1)
+
         elif repl_input:
+            # Prepare lexer
             self.__lexer.analyze_repl(repl_input)
             self.consume_token()
 

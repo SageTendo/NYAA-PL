@@ -17,6 +17,9 @@ class Node:
 
     def to_json(self):
         node_map = self.__dict__.copy()
+        node_map["start_pos"] = self.start_pos
+        node_map["end_pos"] = self.end_pos
+
         for k, v in node_map.items():
             if v is None:
                 continue

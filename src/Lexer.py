@@ -29,8 +29,8 @@ class Lexer(AComponent):
 
         self.__ch = None
         self.__last_read_ch = ""
-        self.__column_number = 0
         self.__line_number = 1
+        self.__column_number = 0
         self.__position = self.__Position(1, 0)
         self.__buffer = []
 
@@ -187,9 +187,12 @@ class Lexer(AComponent):
                     self.__next_char()
                 else:
                     raise LexerError(f"Unrecognized character '{self.__ch}'",
-                                     self.get_line_number(), self.get_col_number())
+                                     self.line_number, self.col_number)
         else:
             token.type = TokenType.ENDMARKER
+
+        # Remember position for error reporting
+        token.pos = self.__position.line_number, self.__position.column_number
 
         self.debug(token)
         return token
@@ -211,11 +214,11 @@ class Lexer(AComponent):
             # Check for valid characters
             if not self.__ch.isalnum() and self.__ch != '_':
                 raise LexerError(f"Invalid character '{self.__ch}' in identifier",
-                                 self.get_line_number(), self.get_col_number())
+                                 self.line_number, self.col_number)
             # Validate length of word
             if len(processed_word) + 1 == MAX_ID_LEN:
                 raise LexerError(f"Identifier exceeds the maximum length of {MAX_ID_LEN} characters",
-                                 self.get_line_number(), self.get_col_number())
+                                 self.line_number, self.col_number)
             # Append character to word and ge the next character
             processed_word += self.__ch
             self.__next_char()
@@ -249,7 +252,7 @@ class Lexer(AComponent):
             #  Check if valid digit
             if next_digit < 0 or next_digit > 9:
                 raise LexerError(f"Invalid character '{self.__ch}' in number",
-                                 self.get_line_number(), self.get_col_number())
+                                 self.line_number, self.col_number)
             # Append the next digit to processed number
             processed_number = (processed_number * 10) + next_digit
             self.__next_char()
@@ -314,18 +317,18 @@ class Lexer(AComponent):
                 elif self.__ch == '\\':
                     processed_string += '\\'
                 else:
-                    raise LexerError("Invalid escape character", self.get_line_number(), self.get_col_number())
+                    raise LexerError("Invalid escape character", self.line_number, self.col_number)
             # Reached end of file
             if self.__ch == EOF:
-                raise LexerError("Unterminated string", self.get_line_number(), self.get_col_number())
+                raise LexerError("Unterminated string", self.line_number, self.col_number)
 
             # Check for Non-printables
             if not self.__ch.isprintable():
                 raise LexerError(f"Non-printable ascii character with code: {ord(self.__ch)}",
-                                 self.get_line_number(), self.get_col_number())
+                                 self.line_number, self.col_number)
             # Max string length reached
             if len(processed_string) + 1 > MAX_STR_LEN:
-                raise LexerError(f"String too long", self.get_line_number(), self.get_col_number())
+                raise LexerError(f"String too long", self.line_number, self.col_number)
 
             # Concat char to string and get next character
             processed_string += self.__ch
@@ -350,11 +353,10 @@ class Lexer(AComponent):
         while self.__ch != '\n':
             self.__next_char()
 
-    def get_position(self):
-        return self.get_line_number(), self.get_col_number()
-
-    def get_line_number(self):
+    @property
+    def line_number(self):
         return self.__position.line_number
 
-    def get_col_number(self):
+    @property
+    def col_number(self):
         return self.__position.column_number

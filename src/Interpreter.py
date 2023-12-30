@@ -8,6 +8,7 @@ from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNo
 from src.core.Environment import Environment
 from src.core.LRUCache import cache_mem
 from src.core.RuntimeObject import RunTimeObject
+from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg, emoji, \
     InterpreterError, ErrorType
 
@@ -32,6 +33,10 @@ class Interpreter(AComponent):
         self.__internal_recursion_depth = 0  # Keep track of number of recursive function calls
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
+        # Error handling
+        self.node_start_pos = (-1, -1)
+        self.node_end_pos = (-1, -1)
+
     def interpret(self, ast):
         """
         Interprets the given abstract syntax tree
@@ -41,16 +46,10 @@ class Interpreter(AComponent):
         try:
             return ast.accept(self)
         except RecursionError as e:
-            print(f"{emoji()} Visitor Error:", e, file=sys.stderr)
-            exit(1)
-        except NotImplementedError as e:
-            # visit method not implemented
-            print(f"{emoji()} Visit Error:", e, file=sys.stderr)
-            exit(1)
-        except TypeError as e:
-            print(f"{emoji()} Type Error:", e, file=sys.stderr)
-        except RuntimeError as e:
-            print(f"{emoji()} Runtime Error:", e, file=sys.stderr)
+            print(f"{emoji()}\n"
+                  f"Visitor Error:", e, file=sys.stderr)
+        except InterpreterError as e:
+            print(e, file=sys.stderr)
 
     def visit(self, node):
         """
@@ -65,27 +64,22 @@ class Interpreter(AComponent):
                 "Visitor depth exceeded! You've ventured too far into the code jungle. "
                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
-        try:
-            self.__visitor_depth += 1
-            method = f"visit_{node.label}"
+        self.__visitor_depth += 1
+        method = f"visit_{node.label}"
 
-            self.debug(warning_msg(f"Visiting {node.label}"))
-            visit_method = getattr(self, method, self.generic_visit)
+        self.debug(warning_msg(f"Visiting {node.label}"))
+        visit_method = getattr(self, method, self.generic_visit)
 
-            # Cache node visits
-            if not cache_mem.has_key(node):
-                cache_mem.put(node, visit_method)
+        # Cache node visits
+        if not cache_mem.has_key(node):
+            cache_mem.put(node, visit_method)
 
-            # Visit (in the case of cache misses)
-            if result := visit_method(node):
-                self.debug(success_msg(f"Returned --> {node.label}: {result}"))
+        # Visit (in the case of cache misses)
+        if result := visit_method(node):
+            self.debug(success_msg(f"Returned --> {node.label}: {result}"))
 
-            self.__visitor_depth -= 1
-            return result
-        except RecursionError as e:
-            # Recursion depth exceeded by user defined functions
-            print(f"{emoji()} Recursion Error:", e, file=sys.stderr)
-            exit(1)
+        self.__visitor_depth -= 1
+        return result
 
     def __get_runtime_value(self, runtime_obj: 'RunTimeObject'):
         """
@@ -133,6 +127,10 @@ class Interpreter(AComponent):
         params = {}
         if node.args:
             for arg in node.args.accept(self):
+                if arg.value in params:
+                    raise InterpreterError(ErrorType.RUNTIME,
+                                           f"Duplicate parameter {WARNING}'{arg.value}'",
+                                           node.args.start_pos, node.args.end_pos)
                 params[arg.value] = arg.type
         self.current_env.insert_function(node.identifier, params, node.body)
 
@@ -281,8 +279,8 @@ class Interpreter(AComponent):
         self.__internal_recursion_depth += 1
         if self.__internal_recursion_depth > INTERNAL_RECURSION_LIMIT:
             self.__internal_recursion_depth = 0
-            raise RecursionError("Ara Ara! Interpreter recursion depth exceeded, "
-                                 "that's not very kawaii of you... (◡﹏◡✿)")
+            raise InterpreterError(ErrorType.RECURSION, "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
+                                   node.start_pos, node.end_pos)
 
         #  Create a local scope for the current function call and keep reference of the previous scope
         local_env = Environment(name=node.identifier,
@@ -298,10 +296,10 @@ class Interpreter(AComponent):
 
             # Check for invalid number of args
             if len(args) != len(function_symbol.params):
-                raise TypeError(
-                    f"Invalid number of arguments provided, "
-                    f"expected {len(function_symbol.params)} "
-                    f"but got {len(args)}")
+                raise InterpreterError(ErrorType.RUNTIME,
+                                       f"Invalid number of arguments provided...\n"
+                                       f"Expected {len(function_symbol.params)} "
+                                       f"but got {len(args)}", node.args.start_pos, node.args.end_pos)
 
             # Assign args to params (setting local vars)
             for i, param in enumerate(function_symbol.params):
@@ -377,6 +375,9 @@ class Interpreter(AComponent):
         @param node: The expression node to visit
         @return: The result of the expression evaluated
         """
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
+
         expr = self.handle_expressions(node)
         return expr
 
@@ -420,11 +421,11 @@ class Interpreter(AComponent):
                 return self.handle_relational_expressions(left, right, node.op)
 
             # Invalid operation
-            throw_invalid_operation_err(left.label, node.op, right.label)
+            throw_invalid_operation_err(left.label, node.op, right.label,
+                                        self.node_start_pos, self.node_end_pos)
         return left
 
-    @staticmethod
-    def handle_additive_expressions(left, right, op):
+    def handle_additive_expressions(self, left, right, op):
         """
         Handles additive expressions and returns the result of the operation
         @param left: The left operand of the operation
@@ -446,10 +447,10 @@ class Interpreter(AComponent):
             return RunTimeObject(left.label, left.value or right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label)
+        throw_invalid_operation_err(left.label, op, right.label,
+                                    self.node_start_pos, self.node_end_pos)
 
-    @staticmethod
-    def handle_multiplicative_expressions(left, right, op):
+    def handle_multiplicative_expressions(self, left, right, op):
         """
         Handles multiplicative expressions and returns the result of the operation
         as a runtime object
@@ -470,16 +471,17 @@ class Interpreter(AComponent):
             if left.label == "number" and left.label == right.label:
                 if right.value == 0:
                     raise InterpreterError(ErrorType.RUNTIME,
-                                           "Division by zero is not kawaii, please don't do that.", -1, -1)
+                                           "Division by zero is not kawaii, please don't do that.",
+                                           self.node_start_pos, self.node_end_pos)
                 return RunTimeObject("number", left.value / right.value)
         elif op == 'and':
             return RunTimeObject(right.label, left.value and right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label)
+        throw_invalid_operation_err(left.label, op, right.label,
+                                    self.node_start_pos, self.node_end_pos)
 
-    @staticmethod
-    def handle_relational_expressions(left, right, op):
+    def handle_relational_expressions(self, left, right, op):
         """
         Handles relational expressions and returns the result of the operation
         as a runtime object
@@ -500,7 +502,8 @@ class Interpreter(AComponent):
             return RunTimeObject("boolean", res)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label)
+        throw_invalid_operation_err(left.label, op, right.label,
+                                    self.node_start_pos, self.node_end_pos)
 
     def visit_factor(self, node: 'FactorNode'):
         """
@@ -516,12 +519,14 @@ class Interpreter(AComponent):
             # Check unary operator
             if left.value == 'not':
                 if right.label not in ["string", "number", "identifier", "boolean"]:
-                    throw_unary_type_err(left.value, right.value)
+                    throw_unary_type_err(left.value, right.value,
+                                         self.node_start_pos, self.node_end_pos)
 
                 return RunTimeObject("boolean", not right.value)
             elif left.value == '-':
                 if right.label not in ["identifier", "number"]:
-                    throw_unary_type_err(left.value, right.label)
+                    throw_unary_type_err(left.value, right.label,
+                                         self.node_start_pos, self.node_end_pos)
 
                 if right.label == "number":
                     return RunTimeObject("number", -right.value)
@@ -529,7 +534,8 @@ class Interpreter(AComponent):
                     var_runtime_object = self.current_env.lookup_variable(right.value).copy()
                     if var_runtime_object.label != 'number':
                         raise InterpreterError(ErrorType.TYPE,
-                                               "You gave me something that's not a number", -1, -1)
+                                               "You gave me something that's not a number",
+                                               self.node_start_pos, self.node_end_pos)
 
                     # Negate the value
                     var_runtime_object.value *= -1

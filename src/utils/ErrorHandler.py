@@ -15,7 +15,8 @@ class LexerError(Exception):
 
     def __init__(self, message: str, line_number: int, col_number: int):
         self.message = (f"{WARNING}{emoji()}\n"
-                        f"Lexical Error (字句エラー): {ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}")
+                        f"Lexical Error (字句エラー): "
+                        f"{ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}")
         super().__init__(self.message)
 
 
@@ -29,18 +30,15 @@ class ParserError(Exception):
 
 class InterpreterError(Exception):
 
-    def __init__(self, err_tpye: ErrorType, message: str, line_number: int, col_number: int):
+    def __init__(self, err_tpye: ErrorType, message: str, start_pos: tuple, end_pos: tuple):
+        start_line_number, start_col_number = start_pos
+        end_line_number, end_col_number = end_pos
+
         self.message = (f"{WARNING}{emoji()}\n"
-                        f"{err_tpye.value}: {ERROR}{message}{ERROR} at position {WARNING}{line_number}:{col_number}{ENDC}")
+                        f"{err_tpye.value}: {ERROR}{message}{ERROR} "
+                        f"at position {WARNING}{start_line_number}:{start_col_number} "
+                        f"to {end_line_number}:{end_col_number}{ENDC}")
         super().__init__(self.message)
-
-
-def __throw_err(msg, line_number=None, col_number=None, exception_type=Exception):
-    """
-    Simple error handling with coloured text
-    @param msg: The message to display to the console
-    """
-    return exception_type(f"{ERROR}{msg}{ENDC}")
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -60,26 +58,31 @@ def throw_unexpected_token_err(token_type, expected_type, line_number, col_numbe
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Runtime Errors
-def throw_invalid_operation_err(lhs, op, rhs):
+def throw_invalid_operation_err(lhs, op, rhs, start_pos, end_pos):
     """
     Throws an exception when an invalid operation is performed
     @param lhs: LHS value
     @param op: operator
     @param rhs: RHS value
+    @param start_pos: The starting position of the expression
+    @param end_pos: The ending position of the expression
     """
-    raise InterpreterError(ErrorType.TYPE, f"Invalid operation {WARNING}'{lhs} {op} {rhs}'", -1, -1)
+    raise InterpreterError(ErrorType.TYPE, f"Invalid operation {WARNING}'{lhs} {op} {rhs}'",
+                           start_pos, end_pos)
 
 
-def throw_unary_type_err(operator, operand_label):
+def throw_unary_type_err(operator, operand_label, start_pos, end_pos):
     """
     Throws an error when an unsupported unary type is parsed
     @param operator: The unary operator node
     @param operand_label: The label of the operand
+    @param start_pos: The starting position of the expression
+    @param end_pos: The ending position of the expression
     """
     raise InterpreterError(ErrorType.RUNTIME,
                            f"Can't apply unary operator "
                            f"{WARNING}'{operator}'{ERROR} on a {WARNING}'{operand_label}'",
-                           -1, -1)
+                           start_pos, end_pos)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -106,14 +109,14 @@ def emoji():
     """
     kawaii_emoticons = [
         # Sad Kawaii Emojis
-        "(´｡• ω •｡`)",
         "(-_-)",
         "(つω`｡)",
         "(；⌣̀_⌣́)",
         "╥﹏╥",
-        "(´•̥̥̥ ᎔ •̥̥̥`)",
         "(⌣́_⌣̀)",
         "(∩︵∩)",
+        "(◡﹏◡✿)",
+        "(✿◠‿◠)",
 
         # Mad Kawaii Emojis
         "ಠ_ಠ",

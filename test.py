@@ -83,7 +83,7 @@ class TestNyaa(TestCase):
 
             res = proc.stdout.strip().replace(' ', '')
             if res == expected:
-                print(f"{SUCCESS}  Passed{ENDC}\n")
+                print(f"{SUCCESS}  Passed{ENDC}")
             else:
                 expected_header = "EXPECTED OUTPUT:"
                 print(f"{WARNING}{expected_header}", f"-" * len(expected_header))
@@ -91,7 +91,10 @@ class TestNyaa(TestCase):
 
                 actual_header = "ACTUAL OUTPUT:"
                 print(f"{WARNING}{actual_header}", f"-" * len(actual_header))
-                print(f"{WARNING}{proc.stderr}{ENDC}")
+                if proc.stderr:
+                    print(f"{WARNING}{proc.stderr.strip()}{ENDC}")
+                else:
+                    print(f"{WARNING}{res.strip()}{ENDC}")
                 failed = True
 
         if failed:
