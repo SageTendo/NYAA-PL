@@ -297,11 +297,10 @@ class Parser(AComponent):
         funcCall: ID args
         @return: CallNode
         """
+        identifier = self.curr_tkn.value
         start_pos = self.curr_tkn.pos
 
-        identifier = self.curr_tkn.value
         self.__expect_and_consume(TokenType.ID)
-
         self.debug("<Args>")
         args = self.parse_args()
         self.debug("</Args>")
@@ -316,16 +315,23 @@ class Parser(AComponent):
         PostfixExpr: ID (UN_ADD | UN_SUB)
         @return: PostfixExprNode
         """
+        postfix_node = None
+        start_pos = self.curr_tkn.pos
+
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
         op = self.curr_tkn.type
         if op == TokenType.UN_ADD:
             self.__expect_and_consume(TokenType.UN_ADD)
-            return PostfixExprNode(left_node, "++")
+            postfix_node = PostfixExprNode(left_node, "++")
         elif op == TokenType.UN_SUB:
             self.__expect_and_consume(TokenType.UN_SUB)
-            return PostfixExprNode(left_node, "--")
+            postfix_node = PostfixExprNode(left_node, "--")
+
+        postfix_node.start_pos = start_pos
+        postfix_node.end_pos = self.curr_tkn.pos
+        return postfix_node
 
     def parse_assignment(self):
         """
@@ -750,6 +756,10 @@ class Parser(AComponent):
         return factor_node
 
     def parse_repl(self):
+        """
+        Parse REPL input and return the AST representation of the input
+        @return: The AST representation of the REPL input
+        """
         if self.match(TokenType.ENDMARKER):
             return None
 
