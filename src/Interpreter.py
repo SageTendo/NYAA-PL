@@ -308,12 +308,12 @@ class Interpreter(AComponent):
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
-        table_hash = hash(self.current_env)
-        if result := cache_mem.get(table_hash):
+        env_hash = hash(self.current_env)
+        if result := cache_mem.get(env_hash):
             result = self.__test_for_identifier(result)
         elif result := function_symbol.body.accept(self):
             result = self.__test_for_identifier(result)
-            cache_mem.put(table_hash, result)
+            cache_mem.put(env_hash, result)
 
         # Restore previous environment and internal recursion depth
         self.current_env = old_env
