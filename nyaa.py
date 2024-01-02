@@ -25,7 +25,7 @@ def parse_args():
     return arg_parser.parse_args()
 
 
-if __name__ == '__main__':
+def main():
     # Args parsing
     args = parse_args()
     parser = Parser()
@@ -39,6 +39,11 @@ if __name__ == '__main__':
     else:
         # Parse source code
         AST = parser.parse_source(source_path=args.src, dflags=dflags)
+        parser = None
 
         # Start interpreter
         interpreter.interpret(AST)
+
+
+if __name__ == '__main__':
+    main()
