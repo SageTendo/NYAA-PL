@@ -6,7 +6,7 @@ from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNo
     AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
     ContinueNode
 from src.core.Environment import Environment
-from src.core.LRUCache import cache_mem
+from src.core.CacheMemory import cache_mem
 from src.core.RuntimeObject import RunTimeObject
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg, emoji, \

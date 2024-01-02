@@ -706,28 +706,28 @@ class Parser(AComponent):
                 factor_node = self.parse_func_call()
             else:
                 # Check if it is an identifier
-                factor_node = FactorNode(IdentifierNode(self.curr_tkn))
+                factor_node = IdentifierNode(self.curr_tkn)
                 self.__expect_and_consume(TokenType.ID)
 
         elif self.match(TokenType.INT) or self.match(TokenType.FLOAT):
-            factor_node = FactorNode(NumericLiteralNode(self.curr_tkn))
+            factor_node = NumericLiteralNode(self.curr_tkn)
             if self.curr_tkn.type == TokenType.INT:
                 self.__expect_and_consume(TokenType.INT)
             else:
                 self.__expect_and_consume(TokenType.FLOAT)
 
         elif self.match(TokenType.STR):
-            factor_node = FactorNode(StringLiteralNode(self.curr_tkn))
+            factor_node = StringLiteralNode(self.curr_tkn)
             self.__expect_and_consume(TokenType.STR)
 
         elif self.match(TokenType.TRUE) or self.match(TokenType.FALSE):
 
             if self.curr_tkn.type == TokenType.TRUE:
                 self.__expect_and_consume(TokenType.TRUE)
-                factor_node = FactorNode(BooleanNode(True))
+                factor_node = BooleanNode(True)
             else:
                 self.__expect_and_consume(TokenType.FALSE)
-                factor_node = FactorNode(BooleanNode(False))
+                factor_node = BooleanNode(False)
 
         elif self.match(TokenType.LPAR):
             self.__expect_and_consume(TokenType.LPAR)

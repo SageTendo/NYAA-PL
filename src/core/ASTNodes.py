@@ -1,6 +1,6 @@
 import json
 
-from src.core.LRUCache import cache_mem
+from src.core.CacheMemory import cache_mem
 
 
 class Node:
