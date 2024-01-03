@@ -6,7 +6,7 @@ from src.core.ASTNodes import BodyNode, ReturnNode, PassNode, ProgramNode, Simpl
     IdentifierNode, \
     PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
     CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode
+    WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode, ForNode
 from src.core.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err, ParserError, LexerError
 
@@ -238,6 +238,12 @@ class Parser(AComponent):
                 statement_node = self.parse_while()
                 self.debug("</While>")
 
+            # for statement
+            elif self.match(TokenType.FOR):
+                self.debug("<For>")
+                statement_node = self.parse_for()
+                self.debug("</For>")
+
             # if statement
             elif self.match(TokenType.IF):
                 self.debug("<If>")
@@ -380,6 +386,34 @@ class Parser(AComponent):
         self.__expect_and_consume(TokenType.RBRACE)
 
         return WhileNode(left_node, right_node)
+
+    def parse_for(self):
+        """
+        ForStatement: FOR ID TO ( NUM, NUM ) { body }
+        @return: ForNode
+        """
+        body = None
+        self.__expect_and_consume(TokenType.FOR)
+
+        identifier = IdentifierNode(self.curr_tkn)
+        self.__expect_and_consume(TokenType.ID)
+        self.__expect_and_consume(TokenType.TO)
+        self.__expect_and_consume(TokenType.LPAR)
+
+        range_start = self.parse_expr()
+        self.__expect_and_consume(TokenType.COMMA)
+
+        range_end = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+
+        self.__expect_and_consume(TokenType.LBRACE)
+        if TokenType.conditional_stmt_start(self.curr_tkn):
+            self.debug("<Cond Body>")
+            body = self.parse_conditional_body()
+            self.debug("</Cond Body>")
+        self.__expect_and_consume(TokenType.RBRACE)
+
+        return ForNode(identifier, range_start, range_end, body)
 
     def parse_if(self):
         """

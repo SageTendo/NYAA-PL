@@ -19,8 +19,10 @@ class TokenType(Enum):
     DEF = auto()  # kawaii
     IF = auto()  # if
     WHILE = auto()  # while
+    FOR = auto()
     INPUT = auto()  # ohayo
     PRINT = auto()  # printu
+
     # Breaks
     PASS = auto()  # pasu
     CONTINUE = auto()  # motto
@@ -70,7 +72,7 @@ class TokenType(Enum):
     def statement_start(cls, token):
         return token.type in [
             TokenType.PASS, TokenType.RET,
-            TokenType.ID, TokenType.WHILE, TokenType.IF,
+            TokenType.ID, TokenType.WHILE, TokenType.FOR, TokenType.IF,
             TokenType.PRINT, TokenType.INPUT
         ]
 
