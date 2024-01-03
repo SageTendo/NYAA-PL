@@ -148,6 +148,15 @@ class WhileNode(ConditionalNode):
         super().__init__(expr, body, "while")
 
 
+class ForNode(Node):
+    def __init__(self, identifier, range_start, range_end, body):
+        super().__init__("for")
+        self.identifier = identifier
+        self.range_start = range_start
+        self.range_end = range_end
+        self.body = body
+
+
 class IfNode(ConditionalNode):
     def __init__(self, expr, body):
         super().__init__(expr, body, "if")

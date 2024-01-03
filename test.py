@@ -93,7 +93,7 @@ class TestNyaa(TestCase):
             )
 
             res = proc.stdout.strip().replace(' ', '')
-            if res == expected:
+            if res == expected and proc.returncode == 0:
                 print(f"{SUCCESS}  Passed{ENDC}")
             else:
                 expected_header = "EXPECTED OUTPUT:"

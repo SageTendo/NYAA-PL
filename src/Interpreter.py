@@ -4,9 +4,9 @@ from src.core.AComponent import AComponent
 from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
     AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
-    ContinueNode
-from src.core.Environment import Environment
+    ContinueNode, ForNode
 from src.core.CacheMemory import cache_mem
+from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg, emoji, \
@@ -255,6 +255,41 @@ class Interpreter(AComponent):
 
             # Evaluate condition
             expr = node.expr.accept(self)
+
+    def visit_for(self, node: 'ForNode'):
+
+        """
+        Visits a for loop and creates an iterator in the symbol table and interprets its body for the specified range
+        @param node: The for loop node to visit
+        @return: The result of the last evaluated statement if any
+        """
+
+        def validate_range_value(range_value, range_node):
+            try:
+                return int(range_value)
+            except ValueError:
+                raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
+                                       range_node.start_pos, range_node.end_pos)
+
+        # Get identifier values from symbol table if range values arguments are identifiers
+        range_start = self.__test_for_identifier(node.range_start.accept(self))
+        range_end = self.__test_for_identifier(node.range_end.accept(self))
+
+        # Validate range values
+        range_start = validate_range_value(range_start.value, node.range_start)
+        range_end = validate_range_value(range_end.value, node.range_end)
+
+        # Create iterator in symbol table
+        self.current_env.insert_variable(node.identifier.value, RunTimeObject(label="int", value=0, value_type="int"))
+        iterator_runtime_object = self.current_env.lookup_variable(node.identifier.value)
+
+        # incrementer to determine inclusive range and direction of iteration
+        incrementer = 1 if range_start < range_end else -1
+        range_end += incrementer
+        for i in range(range_start, range_end, incrementer):
+            iterator_runtime_object.value = i
+            if last_evaluated := self.__handle_conditional_execution(node.body):
+                return last_evaluated
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """

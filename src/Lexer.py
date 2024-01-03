@@ -12,7 +12,7 @@ RESERVED_WORDS = {
     'IIE': TokenType.FALSE, 'wa': TokenType.ASSIGN, "modoru": TokenType.RET,
     'purasu': TokenType.PLUS, 'mainasu': TokenType.MINUS, 'purodakuto': TokenType.MULTIPLY,
     'supuritto': TokenType.DIVIDE, 'ando': TokenType.AND, 'matawa': TokenType.OR,
-    'nai': TokenType.NOT
+    'nai': TokenType.NOT, 'for': TokenType.FOR
 }
 
 
@@ -137,51 +137,60 @@ class Lexer(AComponent):
                     self.__next_char()
                 elif self.__ch == '=':
                     self.__next_char()
+
                     if self.__ch == '=':
                         token.type = TokenType.EQ
                         self.__next_char()
-                    elif self.__ch == '>':
+                    elif self.__ch == '>':  # Check for 'to' token
                         token.type = TokenType.TO
                         self.__next_char()
+
                 elif self.__ch == '+':
                     self.__next_char()
 
-                    # Check for unary plus
                     if self.__ch == '+':
                         token.type = TokenType.UN_ADD
                         self.__next_char()
+
                 elif self.__ch == '-':
                     token.type = TokenType.NEG
-                    self.__next_char()
 
                     # Check for unary minus
+                    self.__next_char()
                     if self.__ch == '-':
                         token.type = TokenType.UN_SUB
                         self.__next_char()
+
                 elif self.__ch == '%':
                     token.type = TokenType.MODULO
                     self.__next_char()
                 elif self.__ch == '!':
                     token.type = TokenType.NOT
+
                     self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.NEQ
                         self.__next_char()
+
                 elif self.__ch == "#":
                     self.__skip_comment()
                     token = self.get_token()
                 elif self.__ch == '<':
                     token.type = TokenType.LT
+
                     self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.LTE
                         self.__next_char()
+
                 elif self.__ch == '>':
                     token.type = TokenType.GT
+
                     self.__next_char()
                     if self.__ch == '=':
                         token.type = TokenType.GTE
                         self.__next_char()
+
                 elif self.__ch == ',':
                     token.type = TokenType.COMMA
                     self.__next_char()
