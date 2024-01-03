@@ -256,14 +256,6 @@ class Interpreter(AComponent):
             # Evaluate condition
             expr = node.expr.accept(self)
 
-    @staticmethod
-    def validate_range_value(range_value, node):
-        try:
-            return int(range_value)
-        except ValueError:
-            raise InterpreterError(ErrorType.RUNTIME,
-                                   "Range value must be integers", node.start_pos, node.end_pos)
-
     def visit_for(self, node: 'ForNode'):
 
         """
@@ -271,13 +263,21 @@ class Interpreter(AComponent):
         @param node: The for loop node to visit
         @return: The result of the last evaluated statement if any
         """
+
+        def validate_range_value(range_value, range_node):
+            try:
+                return int(range_value)
+            except ValueError:
+                raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
+                                       range_node.start_pos, range_node.end_pos)
+
         # Get identifier values from symbol table if range values arguments are identifiers
         range_start = self.__test_for_identifier(node.range_start.accept(self))
         range_end = self.__test_for_identifier(node.range_end.accept(self))
 
         # Validate range values
-        range_start = self.validate_range_value(range_start.value, node.range_start)
-        range_end = self.validate_range_value(range_end.value, node.range_end)
+        range_start = validate_range_value(range_start.value, node.range_start)
+        range_end = validate_range_value(range_end.value, node.range_end)
 
         # Create iterator in symbol table
         self.current_env.insert_variable(node.identifier.value, RunTimeObject(label="int", value=0, value_type="int"))
@@ -288,8 +288,8 @@ class Interpreter(AComponent):
         range_end += incrementer
         for i in range(range_start, range_end, incrementer):
             iterator_runtime_object.value = i
-            if stmt := self.__handle_conditional_execution(node.body):
-                return stmt
+            if last_evaluated := self.__handle_conditional_execution(node.body):
+                return last_evaluated
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """
@@ -297,11 +297,8 @@ class Interpreter(AComponent):
         @param node: The assignment node to visit
         """
         lhs = node.left.accept(self)
-        if lhs.value == '_':  # Check if identifier is valid
-            raise InterpreterError(ErrorType.RUNTIME,
-                                   "Cannot assign to '_'", node.start_pos, node.end_pos)
-
         rhs = node.right.accept(self)
+
         rhs = self.__test_for_identifier(rhs, current_scope=True)
         self.current_env.insert_variable(lhs.value,
                                          RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))

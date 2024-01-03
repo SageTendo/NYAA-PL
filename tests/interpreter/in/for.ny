@@ -38,4 +38,5 @@ uWu_nyaa() => {
     for _ => (HAI, IIE) {
         yomu(_)
     }
+    yomu(_)
 }
