@@ -1,5 +1,7 @@
+import readline
 import sys
 
+from src.core.RuntimeObject import RunTimeObject
 from src.utils.Constants import SUCCESS, ENDC
 
 
@@ -7,6 +9,12 @@ class Repl:
     def __init__(self, parser, interpreter):
         self.parser = parser
         self.interpreter = interpreter
+        self.autocompletion_cmds = None
+
+        # Shell confiurations
+        readline.set_auto_history(False)
+        readline.set_history_length(1000)
+        readline.parse_and_bind('set blink-matching-paren on')
 
     def run(self, dflags=None):
         print(f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
@@ -14,36 +22,21 @@ class Repl:
 
         while True:
             line = self.handle_input()
-            if len(line) == 0:
+            if not line:
                 continue
-
-            try:
-                AST = self.parser.parse_source(repl_input=line, dflags=dflags)
-
-                res = self.interpreter.interpret(AST)
-                if not res or res.label == 'null':
-                    print()
-                    continue
-
-                if isinstance(res, list):
-                    for r in res:
-                        if r:
-                            print(r, "\n")
-                elif res:
-                    print(res, "\n")
-            except Exception as e:
-                print(e.with_traceback(None), '\n', file=sys.stderr)
+            self.execute(line, dflags)
 
     @staticmethod
     def handle_input():
+        # Get input
         try:
             line = str(input(">> "))
         except KeyboardInterrupt:
             print()
-            exit(0)
+            exit(1)
 
         # Exit
-        if line == "yamete()":
+        if line.lower() == "jaa ne":
             exit(0)
 
         # Handle multiline input
@@ -53,4 +46,25 @@ class Repl:
                 line += next_line
                 next_line = str(input())
             line += next_line
-        return line
+        return line if len(line) > 0 else None
+
+    def execute(self, line, dflags):
+        try:
+            # Parse and interpret
+            AST = self.parser.parse_source(repl_input=line, dflags=dflags)
+            res = self.interpreter.interpret(AST)
+
+            # Add successful commands to history
+            readline.add_history(line)
+            if not res or res.label == 'null':
+                print()
+                return
+
+                # Print the result
+            if isinstance(res, list):
+                for r in res:
+                    print(r.value, "\n") if r and isinstance(r, RunTimeObject) else None
+            elif isinstance(res, RunTimeObject):
+                print(res.value, "\n")
+        except Exception as e:
+            print(e.with_traceback(None), '\n', file=sys.stderr)
