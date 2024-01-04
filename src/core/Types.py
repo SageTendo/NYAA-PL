@@ -11,8 +11,6 @@ class TokenType(Enum):
     STR = auto()  # soturingu
     FLOAT = auto()  # furoto
     BOOL = auto()  # buru
-    TRUE = auto()  # HAI
-    FALSE = auto()  # IIE
 
     # Statements (Independent)
     ID = auto()  # Identifier
@@ -22,6 +20,8 @@ class TokenType(Enum):
     FOR = auto()
     INPUT = auto()  # ohayo
     PRINT = auto()  # printu
+    TRUE = auto()  # HAI
+    FALSE = auto()  # IIE
 
     # Breaks
     PASS = auto()  # pasu
@@ -42,12 +42,13 @@ class TokenType(Enum):
     LBRACE = auto()  # {
     RBRACE = auto()  # }
     COMMA = auto()  # ,
-    PERIOD = auto()  # .
+    # PERIOD = auto()  # .
+    DCOLON = auto()  # ::
 
     # Binary operators
     PLUS = auto()  # purasu
     MINUS = auto()  # mainasu
-    MULTIPLY = auto()  # purodukuto
+    MULTIPLY = auto()  # purodakuto
     DIVIDE = auto()  # supuritto
     MODULO = auto()  # %
     EQ = auto()  # ==

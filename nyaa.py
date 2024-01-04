@@ -39,7 +39,6 @@ def main():
     else:
         # Parse source code
         AST = parser.parse_source(source_path=args.src, dflags=dflags)
-        parser = None
 
         # Start interpreter
         interpreter.interpret(AST)
