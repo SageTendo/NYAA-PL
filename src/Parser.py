@@ -123,7 +123,6 @@ class Parser(AComponent):
         while self.curr_tkn.type == TokenType.DEF:
             program_node.append_func(self.parse_func_def())
 
-        # handle uWu_nyaa() => { tokens
         self.__expect_and_consume(TokenType.MAIN)
         self.__expect_and_consume(TokenType.LPAR)
         self.__expect_and_consume(TokenType.RPAR)
@@ -834,7 +833,6 @@ class Parser(AComponent):
                 self.__lexer.analyze_src_file(source_path)
                 self.consume_token()
 
-                # Parse source code
                 self.debug("<Program>")
                 ast = self.parse_program()
                 self.debug("</Program>")
@@ -851,7 +849,6 @@ class Parser(AComponent):
             self.__lexer.analyze_repl(repl_input)
             self.consume_token()
 
-            # Parse REPL input
             self.debug("<Repl>")
             repl_node = self.parse_repl()
             self.debug("</Repl>")

@@ -2,9 +2,8 @@ import sys
 
 from src.core.AComponent import AComponent
 from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
-    FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, PassNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, BreakNode, \
-    ContinueNode, ForNode
+    FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, \
+    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
@@ -64,13 +63,16 @@ class Interpreter(AComponent):
                 "Visitor depth exceeded! You've ventured too far into the code jungle. "
                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
+        # Skip visiting pass, break, and continue
+        # if node.label in ["pass", "break", "continue"]:
+        #     return
+
         self.__visitor_depth += 1
         method = f"visit_{node.label}"
-
         self.debug(warning_msg(f"Visiting {node.label}"))
         visit_method = getattr(self, method, self.generic_visit)
 
-        # Cache node visits
+        # Cache node visit
         if not cache_mem.has_key(node):
             cache_mem.put(node, visit_method)
 
@@ -134,6 +136,15 @@ class Interpreter(AComponent):
                 params[arg.value] = arg.type
         self.current_env.insert_function(node.identifier, params, node.body)
 
+    def visit_return(self, node: 'ReturnNode'):
+        """
+        Interprets a return node and returns the result of the expression if any
+        @param node: The return node to visit
+        @return: The result of the expression if any
+        """
+        if node.expr:
+            return node.expr.accept(self)
+
     def visit_body(self, node: 'BodyNode'):
         """
         Visits a body node and interprets the statements in the body
@@ -166,24 +177,6 @@ class Interpreter(AComponent):
         self.conditional_flag = False  # Reset condition flag
         return last_evaluated
 
-    def visit_pass(self, node: 'PassNode'):
-        pass
-
-    def visit_break(self, node: 'BreakNode'):
-        pass
-
-    def visit_continue(self, node: 'ContinueNode'):
-        pass
-
-    def visit_return(self, node: 'ReturnNode'):
-        """
-        Interprets a return node and returns the result of the expression if any
-        @param node: The return node to visit
-        @return: The result of the expression if any
-        """
-        if node.expr:
-            return node.expr.accept(self)
-
     def __handle_conditional_execution(self, body_node: 'BodyNode'):
         """
         Handles the execution of a conditional body node
@@ -209,25 +202,21 @@ class Interpreter(AComponent):
         @param node: The if statement node to visit
         @return: The result of the last evaluated statement if any
         """
-        expr = node.expr.accept(self)
-        body = node.body
-
-        if expr.value:
-            # Handle if statement
-            if stmt := self.__handle_conditional_execution(body):
+        condition = node.expr.accept(self)
+        if condition.value is True:
+            if stmt := self.__handle_conditional_execution(node.body):
                 return stmt
 
-        elif node.else_if_statements:
+        elif node.else_if_statements is not None:
             for else_if_stmt in node.else_if_statements:
-                # Handle elif statement
-                expr = else_if_stmt.expr.accept(self)
-                if not expr.value:
+                condition = else_if_stmt.expr.accept(self)
+                if condition.value is False:
                     continue
 
                 if stmt := self.__handle_conditional_execution(else_if_stmt.body):
                     return stmt
-        elif node.else_body:
-            # Handle else statement
+
+        elif node.else_body is not None:
             if stmt := self.__handle_conditional_execution(node.else_body):
                 return stmt
 
@@ -238,14 +227,11 @@ class Interpreter(AComponent):
         @param node: The while statement node to visit
         @return: The result of the last evaluated statement if any
         """
-        expr = node.expr.accept(self)
-
-        while expr.value and node.body:
-            # Handle while body
+        condition = node.expr.accept(self)
+        while condition.value is True:
             if stmt := self.__handle_conditional_execution(node.body):
                 return stmt
 
-            # Handle control flow statements
             if self.continue_flag:
                 self.continue_flag = False
                 continue
@@ -254,7 +240,7 @@ class Interpreter(AComponent):
                 break
 
             # Evaluate condition
-            expr = node.expr.accept(self)
+            condition = node.expr.accept(self)
 
     def visit_for(self, node: 'ForNode'):
 
@@ -384,12 +370,8 @@ class Interpreter(AComponent):
         """
         lhs = node.left.accept(self)
 
-        # Variable value is stored as RunTimeObject
         runtime_object = self.__test_for_identifier(lhs)
-        if node.op == "++":
-            runtime_object.value += 1
-        elif node.op == '--':
-            runtime_object.value -= 1
+        runtime_object.value += 1 if node.op == "++" else -1
         return RunTimeObject("number", runtime_object.value)
 
     def visit_args(self, node: 'ArgsNode'):
@@ -399,9 +381,7 @@ class Interpreter(AComponent):
         @param node: The arguments node to visit
         @return:  List of argument values evaluated
         """
-        args = []
-        for arg in node.children:
-            args.append(arg.accept(self))
+        args = [arg_node.accept(self) for arg_node in node.children]
         return args
 
     def visit_expr(self, node: 'ExprNode'):
@@ -434,13 +414,13 @@ class Interpreter(AComponent):
 
     def handle_expressions(self, node):
         """
-        Handles expressions and returns the result of the operation
-        associated with the expression
+        Handles expressions and returns a runtime object representing the result of the operation
         @param node: The expression node to handle
-        @return: The result of the operation
+        @return: A RunTimeObject representing the result of the operation
         """
         left = node.left.accept(self)
-        if node.op:
+
+        if node.op is not None:
             right = node.right.accept(self)
 
             # Get runtime object for left and right node, if they are identifier nodes
@@ -463,10 +443,10 @@ class Interpreter(AComponent):
     def handle_additive_expressions(self, left, right, op):
         """
         Handles additive expressions and returns the result of the operation
-        @param left: The left operand of the operation
-        @param right: The right operand of the operation
-        @param op: The operation to perform
-        @return: The result of the operation
+        @param left: The left operand of the expression
+        @param right: The right operand of the expression
+        @param op: The operation to be performed on the operands
+        @return: A RunTimeObject representing the result of the operation
         """
         if op == "+":
 
@@ -474,10 +454,11 @@ class Interpreter(AComponent):
                 return RunTimeObject("string", left.value + right.value)
             elif left.label == "number" and left.label == right.label:
                 return RunTimeObject("number", left.value + right.value)
-        elif op == "-":
 
+        elif op == "-":
             if left.label == "number" and left.label == right.label:
                 return RunTimeObject("number", left.value - right.value)
+
         elif op == 'or':
             return RunTimeObject(left.label, left.value or right.value)
 
@@ -489,18 +470,19 @@ class Interpreter(AComponent):
         """
         Handles multiplicative expressions and returns the result of the operation
         as a runtime object
-        @param left: The left operand of the operation
-        @param right: The right operand of the operation
-        @param op: The operation to perform
-        @return: The result of the operation
+        @param left: The left operand of the expression
+        @param right: The right operand of the expression
+        @param op: The operation to be performed on the operands
+        @return: A RunTimeObject representing the result of the operation
         """
         if op == "*":
 
-            if ((left.label == "string" and right.label == "number")
-                    or (left.label == "number" and right.label == "string")):
+            if ((left.label == "string" and right.label == "number") or
+                    (left.label == "number" and right.label == "string")):
                 return RunTimeObject("string", left.value * right.value)
             elif left.label == "number" and left.label == right.label:
                 return RunTimeObject("number", left.value * right.value)
+
         elif op == "/":
 
             if left.label == "number" and left.label == right.label:
@@ -509,6 +491,7 @@ class Interpreter(AComponent):
                                            "Division by zero is not kawaii, please don't do that.",
                                            self.node_start_pos, self.node_end_pos)
                 return RunTimeObject("number", left.value / right.value)
+
         elif op == 'and':
             return RunTimeObject(right.label, left.value and right.value)
 
@@ -520,15 +503,15 @@ class Interpreter(AComponent):
         """
         Handles relational expressions and returns the result of the operation
         as a runtime object
-        @param left: The left operand of the operation
-        @param right: The right operand of the operation
-        @param op: The operation to perform
-        @return: The result of the operation
+        @param left: The left operand of the expression
+        @param right: The right operand of the expression
+        @param op: The operation to be performed on the operands
+        @return: A RunTimeObject representing the result of the operation
         """
         if left.label == "string" and right.label == "number":
-
             res = eval(f"{len(left.value)} {op} {right.value}")
             return RunTimeObject("boolean", res)
+
         elif left.label == right.label:
             if left.label == "string":
                 res = eval(f'"{left.value}" {op} "{right.value}"')
@@ -542,90 +525,85 @@ class Interpreter(AComponent):
 
     def visit_factor(self, node: 'FactorNode'):
         """
-        Visits a factor node and returns the result of the evaluated factor
-        @param node: The factor node to visit
-        @return: The result of the factor evaluated
+        Visits a FactorNode and returns the result of the operation as a runtime object
+        @param node: The FactorNode being visited
+        @return: A RunTimeObject representing the result the evaluated factor
         """
-        left = node.left.accept(self)
+        left_factor = node.left.accept(self)
 
-        if node.right:
-            right = node.right.accept(self)
+        if node.right is not None:  # Unary operation
+            right_factor = node.right.accept(self)
 
-            # Check unary operator
-            if left.value == 'not':
-                if right.label not in ["string", "number", "identifier", "boolean"]:
-                    throw_unary_type_err(left.value, right.value,
-                                         self.node_start_pos, self.node_end_pos)
+            if left_factor.value == 'not':
+                if right_factor.label not in ["string", "number", "identifier", "boolean"]:
+                    throw_unary_type_err(left_factor.value, right_factor.value, self.node_start_pos, self.node_end_pos)
+                return RunTimeObject("boolean", not right_factor.value)
 
-                return RunTimeObject("boolean", not right.value)
-            elif left.value == '-':
-                if right.label not in ["identifier", "number"]:
-                    throw_unary_type_err(left.value, right.label,
-                                         self.node_start_pos, self.node_end_pos)
+            elif left_factor.value == '-':
+                if right_factor.label not in ["identifier", "number"]:
+                    throw_unary_type_err(left_factor.value, right_factor.label, self.node_start_pos, self.node_end_pos)
 
-                if right.label == "number":
-                    return RunTimeObject("number", -right.value)
+                if right_factor.label == "number":
+                    return RunTimeObject("number", -right_factor.value)
                 else:
-                    var_runtime_object = self.current_env.lookup_variable(right.value).copy()
+                    var_runtime_object = self.current_env.lookup_variable(right_factor.value).copy()
                     if var_runtime_object.label != 'number':
-                        raise InterpreterError(ErrorType.TYPE,
-                                               "You gave me something that's not a number",
+                        raise InterpreterError(ErrorType.TYPE, "You gave me something that's not a number",
                                                self.node_start_pos, self.node_end_pos)
 
-                    # Negate the value
                     var_runtime_object.value *= -1
                     return var_runtime_object
-        return left
+        return left_factor
 
     @staticmethod
     def visit_operator(node: 'OperatorNode'):
         """
-        Visits an operator and returns the value as a runtime object
-        @param node: The operator node to visit
-        @return: The operator value as a runtime object
+        Visits an OperatorNode and returns the value as a runtime object
+        @param node: The OperatorNode being visited
+        @return: A RunTimeObject representing the value of the operator
         """
         return RunTimeObject("operator", node.value)
 
     @staticmethod
     def visit_identifier(node: 'IdentifierNode'):
         """
-        Visits an identifier and returns the value as a runtime object
-        @param node: The identifier node to visit
-        @return: The identifier value as a runtime object
+        Visits an IdentifierNode and returns the name of the identifier as a runtime object
+        @param node: The IdentifierNode being visited
+        @return: A RunTimeObject representing the name of the identifier
         """
         return RunTimeObject("identifier", node.value)
 
     @staticmethod
     def visit_numeric_literal(node: 'NumericLiteralNode'):
         """
-        Visits a numeric literal and returns the value as a runtime object
-        @param node: The numeric literal node to visit
-        @return: The numeric literal value as a runtime object
+        Visits a NumericLiteralNode and returns a runtime object representing a number.
+        @param node: The NumericLiteralNode being visited
+        @return: A RunTimeObject representing a number with the specified value
         """
         return RunTimeObject("number", node.value)
 
     @staticmethod
     def visit_string_literal(node: 'StringLiteralNode'):
         """
-        Visits a string literal and returns the value as a runtime object
-        @param node: The string literal node to visit
-        @return: The string literal value as a runtime object
+        Visits a StringLiteralNode and returns a runtime object representing a string.
+        @param node: The StringLiteralNode being visited
+        @return: A RunTimeObject representing a string with the specified value
         """
         return RunTimeObject("string", node.value)
 
     @staticmethod
     def visit_boolean_literal(node: 'BooleanNode'):
         """
-        Visits a boolean literal and returns the value as a runtime object
-        @param node: The boolean literal node to visit
-        @return: The boolean literal value as a runtime object
+        Visits a BooleanNode and returns a runtime object representing a boolean value.
+        @param node: The BooleanNode being visited
+        @return: A RunTimeObject representing a boolean with the specified value
         """
         return RunTimeObject("boolean", node.value)
 
     @staticmethod
     def generic_visit(node):
         """
-        Called if no visitor function exists for a node.
-        @param node: The node to visit
+        Called if no visitor function exists for the specified node.
+        @param node: The node attempting to be visited
         """
         raise NotImplementedError(f'No visit_{node.label} method defined')

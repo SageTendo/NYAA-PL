@@ -24,47 +24,42 @@ class Lexer(AComponent):
 
     def __init__(self):
         super().__init__()
-        self.__program = []
+        self.__program_buffer = []
         self.__program_counter = 0
 
-        self.__ch = None
-        self.__last_read_ch = ""
+        self.__current_char = None
+        self.__last_read_char = ""
         self.__line_number = 1
         self.__column_number = 0
         self.__position = self.__Position(1, 0)
-        self.__buffer = []
+        self.__token_buffer = []
 
     def __next_char(self):
         """
         Get the next character from the program file
         """
-        # Check if last read char was a newline character
-        if self.__last_read_ch == '\n':
-            # Reset the column number and increment the line number
+        if self.__last_read_char == '\n':
             self.__line_number += 1
             self.__column_number = 0
 
-        # Check if there are still characters to be processed in the program file
-        if self.__program_counter != len(self.__program):
-            self.__ch = self.__program[self.__program_counter]
-
-            self.__last_read_ch = self.char
+        if self.__program_counter != len(self.__program_buffer):
+            self.__current_char = self.__program_buffer[self.__program_counter]
+            self.__last_read_char = self.__current_char
             self.__column_number += 1
             self.__program_counter += 1
         else:
-            # End of file reached
-            self.__ch = EOF
+            self.__current_char = EOF
 
-    def analyze_src_file(self, file_path):
+    def analyze_src_file(self, source_file):
         """
         Reads in the source file for tokenization
-        @param file_path: the path to the source file
+        @param source_file: the source file to scan
         """
-        with open(file_path, "r") as f:
-            c = f.read(1)
+        with open(source_file, "r") as source:
+            c = source.read(1)
             while c:
-                self.__program.append(c)
-                c = f.read(1)
+                self.__program_buffer.append(c)
+                c = source.read(1)
         self.__next_char()
 
     def analyze_repl(self, repl_input):
@@ -73,7 +68,7 @@ class Lexer(AComponent):
         @param repl_input: the REPL input to be tokenized
         """
         self.__init__()
-        self.__program = list(repl_input)
+        self.__program_buffer = list(repl_input)
         self.__next_char()
 
     def peek_token(self):
@@ -82,29 +77,23 @@ class Lexer(AComponent):
         @return: The next token found from the source
         """
         token = self.get_token()
-        self.__buffer.append(token)
+        self.__token_buffer.append(token)
         return token
 
     def get_token(self):
         """
         Scans through the source until a recognized symbol or
-         keyword is found and returns it as a token object.
+        keyword is found and returns it as a token object.
         @return: The token found from scanning the source's symbols
         """
+        if len(self.__token_buffer) > 0:
+            return self.__token_buffer.pop(0)
+
         token = Token()
-
-        # Check if there are any tokens in the buffer
-        if len(self.__buffer) > 0:
-            return self.__buffer.pop(0)
-
-        # Skip whitespace
         while self.char.isspace():
             self.__next_char()
 
-        # Remember position for error reporting
-        self.__store_position()
-
-        # Scan for tokens
+        self.__store_position()  # Remember position for error reporting
         if self.char != EOF:
 
             if self.char.isalpha() or self.char == '_':
@@ -112,14 +101,13 @@ class Lexer(AComponent):
             elif self.char.isdigit():
                 self.__process_number(token)
 
-                # Check for float
                 if self.char == '.':
                     self.__next_char()
                     self.__process_float(token)
             elif self.char == '"':
-                self.__next_char()
                 self._process_string(token)
             else:
+
                 if self.char == '(':
                     token.type = TokenType.LPAR
                     self.__next_char()
@@ -134,6 +122,7 @@ class Lexer(AComponent):
                     self.__next_char()
                 elif self.char == ':':
                     self.__next_char()
+
                     if self.char == ':':
                         token.type = TokenType.DCOLON
                         self.__next_char()
@@ -205,9 +194,7 @@ class Lexer(AComponent):
         else:
             token.type = TokenType.ENDMARKER
 
-        # Remember position for error reporting
-        token.pos = self.__position.line_number, self.__position.column_number
-
+        token.pos = self.__position.line_number, self.__position.column_number  # Remember position for error reporting
         self.debug(token)
         return token
 
@@ -220,84 +207,57 @@ class Lexer(AComponent):
         """
         processed_word = ""
 
-        # Read word
-        while True:
-            if not (self.char.isalnum() or self.char == '_'):
-                break
-
-            # Check for valid characters
-            if not self.char.isalnum() and self.char != '_':
-                raise LexerError(f"Invalid character '{self.char}' in identifier",
-                                 self.line_number, self.col_number)
-            # Validate length of word
+        while self.char.isalpha() or self.char == '_':
             if len(processed_word) + 1 == MAX_ID_LEN:
                 raise LexerError(f"Identifier exceeds the maximum length of {MAX_ID_LEN} characters",
                                  self.line_number, self.col_number)
-            # Append character to word and ge the next character
             processed_word += self.char
             self.__next_char()
 
-        # Check for reserved word
         if processed_word in RESERVED_WORDS:
+            token.value = processed_word
             token.type = RESERVED_WORDS[processed_word]
             return
 
-        # Set token params
         token.value = processed_word
         token.type = TokenType.ID
 
     def __process_number(self, token):
         """
-        Processes found numbers and
-        returns a token with its associated type and value (the processed number).
+        Processes found numbers and  returns a token with its associated type and value (the processed number).
         @param token: The token to assign a type and value to
         @return: The token after processing the number
         """
-        # Initialize processed_number with the numeric value of the current character
         processed_number = int(self.char)
 
         self.__next_char()
-
-        # Continue processing while the current character is not an exit symbol
         while self.char.isdigit():
-            # Calculate the numeric value of the next digit
             next_digit = int(self.char)
-
-            # Append the next digit to processed number
-            processed_number = (processed_number * 10) + next_digit
+            processed_number = (processed_number * 10) + next_digit  # Append the next digit to processed number
             self.__next_char()
 
-        # Set the token's value and type based on the processed number
         token.value = processed_number
         token.type = TokenType.INT
 
     def __process_float(self, token):
         """
-        Processes found floating point numbers and
-        returns a token with its associated type and value (the processed float).
+        Processes found floating point numbers and returns a token with its associated type and value.
         @param token: The token to assign a type and value to
         @return: The token after processing the float
         """
-        # Initialize processed_number with the numeric value of the current character
-        processed_fraction = float(self.char)
+        processed_number = float(self.char)
         divisor = 10
 
         self.__next_char()
-
-        # Continue processing while the current character is not an exit symbol
         while self.char.isdigit():
-            # Increase the divisor
+            next_digit = int(self.char)
+            processed_number = (processed_number * 10) + next_digit
             divisor *= 10
 
-            # Calculate the numeric value of the next digit
-            next_digit = int(self.char)
-
-            # Append the next digit to processed number
-            processed_fraction = (processed_fraction * 10) + next_digit
             self.__next_char()
 
-        # Set the token's value and type based on the processed number
-        token.value = token.value + (processed_fraction / divisor)
+        processed_fraction = processed_number / divisor
+        token.value = token.value + processed_fraction
         token.type = TokenType.FLOAT
 
     def _process_string(self, token):
@@ -309,9 +269,20 @@ class Lexer(AComponent):
         """
         processed_string = ""
 
+        self.__next_char()
         while self.char != '"':
-            #  Escape characters
-            if self.char == "\\":
+
+            if self.char == EOF:
+                raise LexerError("Unterminated string", self.line_number, self.col_number)
+
+            if not self.char.isprintable():
+                raise LexerError(f"Non-printable ascii character with code: {ord(self.char)}",
+                                 self.line_number, self.col_number)
+
+            if len(processed_string) + 1 > MAX_STR_LEN:
+                raise LexerError(f"String too long", self.line_number, self.col_number)
+
+            if self.char == "\\":  # Escape characters
                 self.__next_char()
                 if self.char == 'n':
                     processed_string += '\n'
@@ -323,38 +294,19 @@ class Lexer(AComponent):
                     processed_string += '\\'
                 else:
                     raise LexerError("Invalid escape character", self.line_number, self.col_number)
-            # Reached end of file
-            if self.char == EOF:
-                raise LexerError("Unterminated string", self.line_number, self.col_number)
 
-            # Check for Non-printables
-            if not self.char.isprintable():
-                raise LexerError(f"Non-printable ascii character with code: {ord(self.char)}",
-                                 self.line_number, self.col_number)
-            # Max string length reached
-            if len(processed_string) + 1 > MAX_STR_LEN:
-                raise LexerError(f"String too long", self.line_number, self.col_number)
-
-            # Concat char to string and get next character
             processed_string += self.char
             self.__next_char()
-        self.__next_char()
 
-        # Set token params
+        self.__next_char()
         token.value = processed_string
         token.type = TokenType.STR
 
     def __store_position(self):
-        """
-        Store the current character's line and column number
-        """
         self.__position.line_number = self.__line_number
         self.__position.column_number = self.__column_number
 
     def __skip_comment(self):
-        """
-        Skips comments found in the source
-        """
         while self.char != '\n':
             self.__next_char()
 
@@ -368,4 +320,4 @@ class Lexer(AComponent):
 
     @property
     def char(self):
-        return self.__ch
+        return self.__current_char
