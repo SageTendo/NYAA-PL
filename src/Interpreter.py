@@ -80,27 +80,6 @@ class Interpreter(AComponent):
         self.__visitor_depth -= 1
         return result
 
-    def __get_runtime_value(self, runtime_obj: 'RunTimeObject'):
-        """
-        Returns the runtime value of a runtime object
-        @param runtime_obj: The object to return the value from
-        @return: The runtime value of the runtime object
-        """
-        runtime_obj = self.__test_for_identifier(runtime_obj)
-        return runtime_obj.value
-
-    def __test_for_identifier(self, runtime_object: 'RunTimeObject', current_scope=False):
-        """
-        Checks if the runtime object is an identifier, and returns
-        the value held by the identifier
-        @param runtime_object: The runtime object to test
-        @return: The non-identifier runtime object
-        """
-        if runtime_object.label == "identifier":
-            return self.current_env.lookup_variable(runtime_object.value, current_scope=current_scope)
-        else:
-            return runtime_object
-
     def visit_program(self, node: 'ProgramNode'):
         """
         Interprets a program node and returns the result of the program execution
@@ -164,7 +143,7 @@ class Interpreter(AComponent):
         @param node: The return node to visit
         @return: The result of the expression if any
         """
-        if node.expr:
+        if node.expr is not None:
             return node.expr.accept(self)
 
     def visit_pass(self, node: 'PassNode'):
@@ -185,8 +164,8 @@ class Interpreter(AComponent):
         """
         if body_node is None:
             return
-        last_evaluated_stmt = body_node.accept(self)
 
+        last_evaluated_stmt = body_node.accept(self)
         last_node = body_node.statements[-1]
         if last_node.label == "return":
             self.conditional_flag = True
@@ -201,21 +180,16 @@ class Interpreter(AComponent):
         """
         condition = node.expr.accept(self)
         if condition.value:
-            if stmt := self.__handle_conditional_execution(node.body):
-                return stmt
+            return self.__handle_conditional_execution(node.body)
 
-        elif len(node.else_if_statements) > 0:
-            for else_if_stmt in node.else_if_statements:
-                condition = else_if_stmt.expr.accept(self)
-                if condition.value is False:
-                    continue
+        for else_if_stmt in node.else_if_statements:
+            condition = else_if_stmt.expr.accept(self)
+            if condition.value is False:
+                continue
+            return self.__handle_conditional_execution(else_if_stmt.body)
 
-                if stmt := self.__handle_conditional_execution(else_if_stmt.body):
-                    return stmt
-
-        elif node.else_body is not None:
-            if stmt := self.__handle_conditional_execution(node.else_body):
-                return stmt
+        if node.else_body is not None:
+            return self.__handle_conditional_execution(node.else_body)
 
     def visit_while(self, node: 'WhileNode'):
         """
@@ -233,8 +207,7 @@ class Interpreter(AComponent):
                 self.break_flag = False
                 break
 
-            # Evaluate condition
-            condition = node.expr.accept(self)
+            condition = node.expr.accept(self)  # Re-evaluate condition
 
     def visit_for(self, node: 'ForNode'):
 
@@ -242,36 +215,33 @@ class Interpreter(AComponent):
         Visits a for loop and creates an iterator in the symbol table and interprets its body for the specified range
         @param node: The for loop node to visit
         @return: The result of the last evaluated statement if any
+        @raise InterpreterError: If the range value is not an integer
         """
 
-        def validate_range_value(range_value, range_node):
+        def validate_range_node(range_node):
             """
-            Validates the range value is an integer and returns it as an integer
-            @param range_value: The range value to validate
-            @param range_node: The range node to get the start and end positions of the range
-            @return:
+            Validate a range node.
+            @param range_node: The range node to validate.
+            @return int: The validated range value.
+            @raise InterpreterError: If the range value is not an integer.
             """
             try:
-                return int(range_value)
+                runtime_object = range_node.accept(self)
+                return int(runtime_object.value)
             except ValueError:
-                raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
-                                       range_node.start_pos, range_node.end_pos)
+                raise InterpreterError(ErrorType.RUNTIME,
+                                       "Range value must be integers", range_node.start_pos, range_node.end_pos)
 
-        range_start = self.__test_for_identifier(node.range_start.accept(self))
-        range_end = self.__test_for_identifier(node.range_end.accept(self))
-
-        range_start = validate_range_value(range_start.value, node.range_start)
-        range_end = validate_range_value(range_end.value, node.range_end)
+        range_start = validate_range_node(node.range_start)
+        range_end = validate_range_node(node.range_end)
 
         # Create iterator in symbol table
-        self.current_env.insert_variable(node.identifier.value,
-                                         RunTimeObject(label="number", value=0, value_type="int"))
-        iterator_runtime_object = self.current_env.lookup_variable(node.identifier.value)
+        iterator_runtime_object = RunTimeObject(label="number", value=0, value_type="int")
+        self.current_env.insert_variable(node.identifier.value, iterator_runtime_object)
 
         # incrementer to determine inclusive range and direction of iteration
         incrementer = 1 if range_start < range_end else -1
-        range_end += incrementer
-        for i in range(range_start, range_end, incrementer):
+        for i in range(range_start, range_end + incrementer, incrementer):
             iterator_runtime_object.value = i
             if last_evaluated := self.__handle_conditional_execution(node.body):
                 return last_evaluated
@@ -283,11 +253,8 @@ class Interpreter(AComponent):
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
-
-        rhs = self.__test_for_identifier(rhs, current_scope=True)
         self.current_env.insert_variable(lhs.value,
                                          RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))
-        return rhs
 
     def visit_call(self, node: 'CallNode'):
         """
@@ -302,37 +269,30 @@ class Interpreter(AComponent):
             raise InterpreterError(ErrorType.RECURSION, "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
                                    node.start_pos, node.end_pos)
 
-        #  Create a local scope for the current function call and keep reference of the previous scope
-        local_env = Environment(name=node.identifier,
-                                level=self.current_env.level + 1,
-                                parent=self.global_env
-                                )
+        # Create a local scope for the current function call and keep reference of the previous scope
+        local_env = Environment(name=node.identifier, level=self.current_env.level + 1, parent=self.global_env)
         old_env = self.current_env
-
-        # Get the function symbol from the symbol table
         function_symbol = self.current_env.lookup_function(node.identifier)
-        if node.args is not None:
-            args = node.args.accept(self)
 
-            # Check for invalid number of args
-            if len(args) != len(function_symbol.params):
+        if node.args is not None:
+            function_args = node.args.accept(self)
+
+            if len(function_args) != len(function_symbol.params):
                 raise InterpreterError(ErrorType.RUNTIME,
                                        f"Invalid number of arguments provided...\n"
                                        f"Expected {len(function_symbol.params)} "
-                                       f"but got {len(args)}", node.args.start_pos, node.args.end_pos)
+                                       f"but got {len(function_args)}", node.args.start_pos, node.args.end_pos)
 
-            # Assign args to params (setting local vars)
+            # Assign arg values to params (setting local vars)
             for i, param in enumerate(function_symbol.params):
-                arg_runtime_object = self.__test_for_identifier(args[i])
-                local_env.insert_variable(param, arg_runtime_object)
+                local_env.insert_variable(param, function_args[i])
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
         env_hash = hash(self.current_env)
-        if result := cache_mem.get(env_hash):
-            result = self.__test_for_identifier(result)
-        elif result := function_symbol.body.accept(self):
-            result = self.__test_for_identifier(result)
+        result = cache_mem.get(env_hash)
+        if result is None:
+            result = function_symbol.body.accept(self)
             cache_mem.put(env_hash, result)
 
         # Restore previous environment and internal recursion depth
@@ -356,7 +316,7 @@ class Interpreter(AComponent):
         @param node: The print statement node to visit
         """
         for arg in node.args.accept(self):
-            runtime_value = self.__get_runtime_value(arg)
+            runtime_value = arg.value
             print(runtime_value, end=' ')
         print()
 
@@ -414,11 +374,10 @@ class Interpreter(AComponent):
         @return: A RunTimeObject representing the result of the operation
         """
         left = node.left.accept(self)
+        left = self.__test_for_identifier(left)
+
         if node.op is not None:
             right = node.right.accept(self)
-
-            # Get runtime object for left and right node, if they are identifier nodes
-            left = self.__test_for_identifier(left)
             right = self.__test_for_identifier(right)
 
             # Handle operation
@@ -524,9 +483,11 @@ class Interpreter(AComponent):
         @return: A RunTimeObject representing the result the evaluated factor
         """
         left_factor = node.left.accept(self)
+        left_factor = self.__test_for_identifier(left_factor)
 
         if node.right is not None:  # Unary operation
             right_factor = node.right.accept(self)
+            right_factor = self.__test_for_identifier(right_factor)
 
             if left_factor.value == 'not':
                 if right_factor.label not in ["string", "number", "identifier", "boolean"]:
@@ -534,19 +495,12 @@ class Interpreter(AComponent):
                 return RunTimeObject("boolean", not right_factor.value)
 
             elif left_factor.value == '-':
-                if right_factor.label not in ["identifier", "number"]:
-                    throw_unary_type_err(left_factor.value, right_factor.label, self.node_start_pos, self.node_end_pos)
-
                 if right_factor.label == "number":
                     return RunTimeObject("number", -right_factor.value)
-                else:
-                    var_runtime_object = self.current_env.lookup_variable(right_factor.value).copy()
-                    if var_runtime_object.label != 'number':
-                        raise InterpreterError(ErrorType.TYPE, "You gave me something that's not a number",
-                                               self.node_start_pos, self.node_end_pos)
 
-                    var_runtime_object.value *= -1
-                    return var_runtime_object
+                raise InterpreterError(ErrorType.TYPE,
+                                       f"Value '{right_factor.value}' of variable is not a numeric type",
+                                       self.node_start_pos, self.node_end_pos)
         return left_factor
 
     @staticmethod
@@ -601,3 +555,15 @@ class Interpreter(AComponent):
         @param node: The node attempting to be visited
         """
         raise NotImplementedError(f'No visit_{node.label} method defined')
+
+    def __test_for_identifier(self, runtime_object: 'RunTimeObject', current_scope=False):
+        """
+        Checks if the runtime object is an identifier, and returns
+        the value held by the identifier
+        @param runtime_object: The runtime object to test
+        @return: The non-identifier runtime object
+        """
+        if runtime_object.label == "identifier":
+            return self.current_env.lookup_variable(runtime_object.value, current_scope=current_scope)
+        else:
+            return runtime_object

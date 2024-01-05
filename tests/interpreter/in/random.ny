@@ -42,6 +42,7 @@ uWu_nyaa() => {
         a++
     }
 
+    test wa HAI
     nani (test) {
         yomu()
         add(2, 3)

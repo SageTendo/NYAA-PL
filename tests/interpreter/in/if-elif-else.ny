@@ -1,9 +1,9 @@
 uWu_nyaa() => {
-    test wa HAI
+    test wa "baka"
 
-    nani (test)
-    {}
-    nandesuka (nai test)
-    { yomu(IIE) }
-    baka { yomu(IIE) }
+    nani (test == "nani")
+    { yomu("nani")}
+    nandesuka (test == "nandesuka")
+    { yomu("nandesuka") }
+    baka { yomu("baka") }
 }
