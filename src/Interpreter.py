@@ -3,7 +3,8 @@ import sys
 from src.core.AComponent import AComponent
 from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode
+    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode, \
+    BreakNode, ContinueNode, PassNode
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
@@ -63,10 +64,6 @@ class Interpreter(AComponent):
                 "Visitor depth exceeded! You've ventured too far into the code jungle. "
                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
-        # Skip visiting pass, break, and continue
-        # if node.label in ["pass", "break", "continue"]:
-        #     return
-
         self.__visitor_depth += 1
         method = f"visit_{node.label}"
         self.debug(warning_msg(f"Visiting {node.label}"))
@@ -116,7 +113,6 @@ class Interpreter(AComponent):
         for func in node.functions:
             func.accept(self)
 
-        # visit body
         node.body.accept(self)
         self.current_env = None
 
@@ -127,14 +123,40 @@ class Interpreter(AComponent):
         @param node: The function definition node to visit
         """
         params = {}
-        if node.args:
+        if node.args is not None:
             for arg in node.args.accept(self):
                 if arg.value in params:
-                    raise InterpreterError(ErrorType.RUNTIME,
-                                           f"Duplicate parameter {WARNING}'{arg.value}'",
+                    raise InterpreterError(ErrorType.RUNTIME, f"Duplicate parameter {WARNING}'{arg.value}'",
                                            node.args.start_pos, node.args.end_pos)
                 params[arg.value] = arg.type
         self.current_env.insert_function(node.identifier, params, node.body)
+
+    def visit_body(self, node: 'BodyNode'):
+        """
+        Visits a body node and interprets the statements in the body
+        and returns the result of the last evaluated statement
+        @param node: The body node to visit
+        @return: The result of the last evaluated statement
+        """
+        last_evaluated_stmt = None
+        for stmt in node.statements:
+
+            if self.conditional_flag:
+                self.conditional_flag = False
+                break
+
+            elif self.break_flag:
+                break
+
+            elif self.continue_flag:
+                self.continue_flag = False
+                continue
+
+            evaluated_stmt = stmt.accept(self)
+            last_evaluated_stmt = evaluated_stmt if evaluated_stmt is not None else last_evaluated_stmt
+            if stmt.label == "return":
+                return last_evaluated_stmt
+        return last_evaluated_stmt
 
     def visit_return(self, node: 'ReturnNode'):
         """
@@ -145,37 +167,14 @@ class Interpreter(AComponent):
         if node.expr:
             return node.expr.accept(self)
 
-    def visit_body(self, node: 'BodyNode'):
-        """
-        Visits a body node and interprets the statements in the body
-        and returns the result of the last evaluated statement
-        @param node: The body node to visit
-        @return: The result of the last evaluated statement
-        """
-        last_evaluated = None
+    def visit_pass(self, node: 'PassNode'):
+        pass
 
-        for stmt in node.statements:
-            if stmt.label == "break":
-                # Set break flag and continue
-                self.break_flag = True
-                break
-            elif stmt.label == "continue":
-                self.continue_flag = True
-                continue
-            elif stmt.label == "pass":
-                continue
+    def visit_break(self, node: 'BreakNode'):
+        self.break_flag = True
 
-            # Check if condition flags is set and if so, stop visiting the body and return
-            if self.conditional_flag:
-                break
-
-            evaluated = stmt.accept(self)
-            last_evaluated = evaluated if evaluated else last_evaluated
-            if stmt.label == "return":
-                return last_evaluated
-
-        self.conditional_flag = False  # Reset condition flag
-        return last_evaluated
+    def visit_continue(self, node: 'ContinueNode'):
+        self.continue_flag = True
 
     def __handle_conditional_execution(self, body_node: 'BodyNode'):
         """
@@ -184,16 +183,14 @@ class Interpreter(AComponent):
         @param body_node: The body node to visit
         @return: The result of the last evaluated statement if anything is returned
         """
-        if not body_node:  # Empty body
+        if body_node is None:
             return
+        last_evaluated_stmt = body_node.accept(self)
 
-        stmt = body_node.accept(self)
         last_node = body_node.statements[-1]
         if last_node.label == "return":
             self.conditional_flag = True
-            return stmt
-        elif last_node.label in ["continue", "break"]:
-            self.conditional_flag = True
+            return last_evaluated_stmt
 
     def visit_if(self, node: 'IfNode'):
         """
@@ -203,11 +200,11 @@ class Interpreter(AComponent):
         @return: The result of the last evaluated statement if any
         """
         condition = node.expr.accept(self)
-        if condition.value is True:
+        if condition.value:
             if stmt := self.__handle_conditional_execution(node.body):
                 return stmt
 
-        elif node.else_if_statements is not None:
+        elif len(node.else_if_statements) > 0:
             for else_if_stmt in node.else_if_statements:
                 condition = else_if_stmt.expr.accept(self)
                 if condition.value is False:
@@ -228,14 +225,11 @@ class Interpreter(AComponent):
         @return: The result of the last evaluated statement if any
         """
         condition = node.expr.accept(self)
-        while condition.value is True:
+        while condition.value:
             if stmt := self.__handle_conditional_execution(node.body):
                 return stmt
 
-            if self.continue_flag:
-                self.continue_flag = False
-                continue
-            elif self.break_flag:
+            if self.break_flag:
                 self.break_flag = False
                 break
 
@@ -251,22 +245,27 @@ class Interpreter(AComponent):
         """
 
         def validate_range_value(range_value, range_node):
+            """
+            Validates the range value is an integer and returns it as an integer
+            @param range_value: The range value to validate
+            @param range_node: The range node to get the start and end positions of the range
+            @return:
+            """
             try:
                 return int(range_value)
             except ValueError:
                 raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
                                        range_node.start_pos, range_node.end_pos)
 
-        # Get identifier values from symbol table if range values arguments are identifiers
         range_start = self.__test_for_identifier(node.range_start.accept(self))
         range_end = self.__test_for_identifier(node.range_end.accept(self))
 
-        # Validate range values
         range_start = validate_range_value(range_start.value, node.range_start)
         range_end = validate_range_value(range_end.value, node.range_end)
 
         # Create iterator in symbol table
-        self.current_env.insert_variable(node.identifier.value, RunTimeObject(label="int", value=0, value_type="int"))
+        self.current_env.insert_variable(node.identifier.value,
+                                         RunTimeObject(label="number", value=0, value_type="int"))
         iterator_runtime_object = self.current_env.lookup_variable(node.identifier.value)
 
         # incrementer to determine inclusive range and direction of iteration
@@ -312,7 +311,7 @@ class Interpreter(AComponent):
 
         # Get the function symbol from the symbol table
         function_symbol = self.current_env.lookup_function(node.identifier)
-        if node.args:
+        if node.args is not None:
             args = node.args.accept(self)
 
             # Check for invalid number of args
@@ -356,8 +355,7 @@ class Interpreter(AComponent):
         Visits a print statement node and prints the value(s) of evaluated argument(s) to the console
         @param node: The print statement node to visit
         """
-        args = node.args.accept(self)
-        for arg in args:
+        for arg in node.args.accept(self):
             runtime_value = self.__get_runtime_value(arg)
             print(runtime_value, end=' ')
         print()
@@ -381,8 +379,7 @@ class Interpreter(AComponent):
         @param node: The arguments node to visit
         @return:  List of argument values evaluated
         """
-        args = [arg_node.accept(self) for arg_node in node.children]
-        return args
+        return [arg_node.accept(self) for arg_node in node.children]
 
     def visit_expr(self, node: 'ExprNode'):
         """
@@ -392,9 +389,7 @@ class Interpreter(AComponent):
         """
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
-
-        expr = self.handle_expressions(node)
-        return expr
+        return self.handle_expressions(node)
 
     def visit_simple_expr(self, node: 'SimpleExprNode'):
         """
@@ -419,7 +414,6 @@ class Interpreter(AComponent):
         @return: A RunTimeObject representing the result of the operation
         """
         left = node.left.accept(self)
-
         if node.op is not None:
             right = node.right.accept(self)
 
