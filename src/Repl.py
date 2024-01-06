@@ -18,7 +18,7 @@ class Repl:
 
     def run(self, dflags=None):
         print(f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
-              f"Welcome to the NYAA REPL! Type 'yamete()' to exit. (｡♥‿♥｡)\n{ENDC}")
+              f"Welcome to the NYAA REPL! Type 'jaa ne' to exit. (｡♥‿♥｡)\n{ENDC}")
 
         while True:
             line = self.handle_input()
@@ -28,20 +28,19 @@ class Repl:
 
     @staticmethod
     def handle_input():
-        # Get input
         try:
             line = str(input(">> "))
         except KeyboardInterrupt:
             print()
             exit(1)
 
-        # Exit
         if line.lower() == "jaa ne":
             exit(0)
 
         # Handle multiline input
         if line.endswith('{'):
             next_line = str(input())
+
             while not next_line.endswith('}'):
                 line += next_line
                 next_line = str(input())
@@ -50,7 +49,6 @@ class Repl:
 
     def execute(self, line, dflags):
         try:
-            # Parse and interpret
             AST = self.parser.parse_source(repl_input=line, dflags=dflags)
             res = self.interpreter.interpret(AST)
 
@@ -60,7 +58,7 @@ class Repl:
                 print()
                 return
 
-                # Print the result
+            # Print the result
             if isinstance(res, list):
                 for r in res:
                     print(r.value, "\n") if r and isinstance(r, RunTimeObject) else None

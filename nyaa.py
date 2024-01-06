@@ -26,7 +26,6 @@ def parse_args():
 
 
 def main():
-    # Args parsing
     args = parse_args()
     parser = Parser()
     interpreter = Interpreter()
@@ -34,13 +33,9 @@ def main():
 
     dflags = {"lexer": args.lexer, "parser": args.parser}
     if 'src' not in args:
-        # REPL mode
         Repl(parser, interpreter).run(dflags=dflags)
     else:
-        # Parse source code
         AST = parser.parse_source(source_path=args.src, dflags=dflags)
-
-        # Start interpreter
         interpreter.interpret(AST)
 
 

@@ -30,7 +30,7 @@ class Interpreter(AComponent):
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
-        self.__internal_recursion_depth = 0  # Keep track of number of recursive function calls
+        self.__recursion_count = 0  # Keep track of number of recursive function calls
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Error handling
@@ -184,7 +184,7 @@ class Interpreter(AComponent):
 
         for else_if_stmt in node.else_if_statements:
             condition = else_if_stmt.expr.accept(self)
-            if condition.value is False:
+            if not condition.value:
                 continue
             return self.__handle_conditional_execution(else_if_stmt.body)
 
@@ -258,46 +258,38 @@ class Interpreter(AComponent):
 
     def visit_call(self, node: 'CallNode'):
         """
-        Visits a function call and gets the function's parameters and body,
-        and then interprets the function
-        @param node: The function call node to visit
+        Visits a function CallNode, fetches the function symbol from the symbol table,
+        creates a new environment for the function call and handles its execution.
+        @param node: The CallNode being visited
         """
-        # Check for stack overflow
-        self.__internal_recursion_depth += 1
-        if self.__internal_recursion_depth > INTERNAL_RECURSION_LIMIT:
-            self.__internal_recursion_depth = 0
-            raise InterpreterError(ErrorType.RECURSION, "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
-                                   node.start_pos, node.end_pos)
+        self.check_for_stack_overflow(node)
 
-        # Create a local scope for the current function call and keep reference of the previous scope
         local_env = Environment(name=node.identifier, level=self.current_env.level + 1, parent=self.global_env)
         old_env = self.current_env
         function_symbol = self.current_env.lookup_function(node.identifier)
 
         if node.args is not None:
-            function_args = node.args.accept(self)
 
+            function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
                 raise InterpreterError(ErrorType.RUNTIME,
                                        f"Invalid number of arguments provided...\n"
                                        f"Expected {len(function_symbol.params)} "
                                        f"but got {len(function_args)}", node.args.start_pos, node.args.end_pos)
 
-            # Assign arg values to params (setting local vars)
-            for i, param in enumerate(function_symbol.params):
+            for i, param in enumerate(function_symbol.params):  # assing arg values to local variables
                 local_env.insert_variable(param, function_args[i])
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
-        env_hash = hash(self.current_env)
+        env_hash = self.current_env.hash()
         result = cache_mem.get(env_hash)
         if result is None:
             result = function_symbol.body.accept(self)
             cache_mem.put(env_hash, result)
 
-        # Restore previous environment and internal recursion depth
         self.current_env = old_env
-        self.__internal_recursion_depth -= 1
+        self.__recursion_count -= 1
         return result
 
     @staticmethod
@@ -567,3 +559,15 @@ class Interpreter(AComponent):
             return self.current_env.lookup_variable(runtime_object.value, current_scope=current_scope)
         else:
             return runtime_object
+
+    def check_for_stack_overflow(self, node):
+        """
+        Checks if the recursion depth is exceeded.
+        @param node: The current node being visited
+        @raise InterpreterError: If the recursion depth is exceeded
+        """
+        if self.__recursion_count > INTERNAL_RECURSION_LIMIT:
+            self.__recursion_count = 0
+            raise InterpreterError(ErrorType.RECURSION, "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
+                                   node.start_pos, node.end_pos)
+        self.__recursion_count += 1

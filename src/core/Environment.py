@@ -1,3 +1,5 @@
+import hashlib
+
 from src.core.Symbol import VarSymbol, FunctionSymbol
 
 
@@ -74,6 +76,9 @@ class Environment:
     @property
     def parent(self):
         return self.__parent
+
+    def hash(self):
+        return hashlib.sha256(self.__str__().encode()).hexdigest()
 
     def __str__(self):
         """
