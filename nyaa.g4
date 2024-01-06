@@ -7,12 +7,6 @@ fragment ESCAPE: '\\' ('\\' | '"' | 'n' | 't');
 fragment Letter: [a-zA-Z_];
 fragment Digit: [0-9];
 
-//importStatements:
-//                  (importStatement
-//                | fromImportStatement) ';';
-//importStatement: NOTICE ME ID SENPAI;
-//fromImportStatement: PLEASE NOTICE ME (ID ('.' ID)+) SENPAI;
-
 // Starting variable
 program            : funcDef* MAIN LPAR RPAR TO (LBRACE body RBRACE | statement ';') | EOF;
 funcDef            : DEFINE ID LPAR (ID (',' ID)*)? RPAR TO LBRACE body RBRACE;
@@ -51,9 +45,9 @@ elseStatement      : ELSE LBRACE conditionalBody RBRACE;
 
 // Expressions
 postfixExpression  : ID (UN_ADD | UN_SUB);
-expression         : simple | simple relOperator expression;
-simple             : term | term addOp simple;
-term               : factor | factor mulOp term;
+expression         : simple (relOperator simple)?;
+simple             : (NEG)? term (addOp term)*;
+term               : factor (mulOp factor)*;
 factor             : NEG arithFactor
                     |NOT boolFactor
                     |LPAR expression RPAR
@@ -63,7 +57,7 @@ factor             : NEG arithFactor
                     |INT_CONSTANT
                     |FLOAT_CONSTANT
                     |STR_CONSTANT;
-arithFactor         : NEG arithFactor | ID | INT_CONSTANT | FLOAT_CONSTANT;
+arithFactor         : ID | INT_CONSTANT | FLOAT_CONSTANT;
 boolFactor          : NOT boolFactor  | ID | INT_CONSTANT | FLOAT_CONSTANT | STR_CONSTANT | TRUE | FALSE;
 
 

@@ -205,19 +205,19 @@ class PostfixExprNode(Node):
 
 
 class SimpleExprNode(Node):
-    def __init__(self):
+    def __init__(self, left, right=None, op=None):
         super().__init__('simple_expr')
-        self.left = None
-        self.right = None
-        self.op = None
+        self.left = left
+        self.right = right
+        self.op = op
 
 
 class TermNode(Node):
-    def __init__(self):
+    def __init__(self, left, right=None, op=None):
         super().__init__('term')
-        self.left = None
-        self.right = None
-        self.op = None
+        self.left = left
+        self.right = right
+        self.op = op
 
 
 class FactorNode(Node):

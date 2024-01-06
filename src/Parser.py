@@ -130,17 +130,13 @@ class Parser(AComponent):
 
         # Parse single statement or multiple statements
         if TokenType.statement_start(self.curr_tkn):
-            self.debug("<Statements>")
             program_node.set_body(self.parse_body())
             self.__expect_and_consume(TokenType.SEMICOLON)
         else:
             #  { body* }
             self.__expect_and_consume(TokenType.LBRACE)
-            self.debug("<Statements>")
             program_node.set_body(self.parse_body())
             self.__expect_and_consume(TokenType.RBRACE)
-
-        self.debug("</Statements>")
 
         self.__expect_and_consume(TokenType.ENDMARKER)
         program_node.end_pos = self.curr_tkn.pos
@@ -151,12 +147,15 @@ class Parser(AComponent):
         body:   statement*
         @return: BodyNode
         """
-        body = BodyNode()
-        body.start_pos = self.curr_tkn.pos
+        self.debug("<Body>")
 
+        body = BodyNode()
+        start_pos = self.curr_tkn.pos
         while TokenType.statement_start(self.curr_tkn):
             body.append(self.parse_statement())
 
+        self.debug("</Body>")
+        body.start_pos = start_pos
         body.end_pos = self.curr_tkn.pos
         return body
 
@@ -165,6 +164,7 @@ class Parser(AComponent):
         conditionalBody:    statement conditionalBody? | BREAK | CONTINUE
         @return: body
         """
+        self.debug("<ConditionalBody>")
         body = BodyNode()
         body.start_pos = self.curr_tkn.pos
 
@@ -178,6 +178,7 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.CONTINUE)
             body.append(ContinueNode())
 
+        self.debug("</ConditionalBody>")
         body.end_pos = self.curr_tkn.pos
         return body
 
@@ -191,7 +192,6 @@ class Parser(AComponent):
         statement_node = None
         start_pos = self.curr_tkn.pos
 
-        # Pass statement
         if self.match(TokenType.PASS):
             self.__expect_and_consume(TokenType.PASS)
 
@@ -199,31 +199,20 @@ class Parser(AComponent):
             statement_node = PassNode()
             self.debug("</PASS>")
 
-        #  Return statement
         elif self.match(TokenType.RET):
-            self.debug("<Return>")
             statement_node = self.parse_return()
-            self.debug("</Return>")
 
         elif self.match(TokenType.ID):
             # assignment statement
             if self.peek_token().type == TokenType.ASSIGN:
-                self.debug("<Assignment>")
                 statement_node = self.parse_assignment()
-                self.debug("</Assignment>")
 
-            # postfix statement
             elif TokenType.postfix(self.peek_token()):
-                self.debug("<Postfix>")
                 statement_node = self.parse_postfix()
-                self.debug("</Postfix>")
 
             # call (func calls) statement
             elif self.peek_token().type == TokenType.LPAR:
-                self.debug("<FuncCall>")
                 statement_node = self.parse_func_call()
-                self.debug("</FuncCall>")
-
             else:
                 self.__expect_and_consume(TokenType.ID)
                 throw_unexpected_token_err(
@@ -231,35 +220,19 @@ class Parser(AComponent):
                     "[ASSIGNMENT_TYPE or POSTFIX_TYPE or FUNC_CALL_TYPE]",
                     self.curr_tkn.line_num, self.curr_tkn.column_num)
         else:
-            # while statement
             if self.match(TokenType.WHILE):
-                self.debug("<While>")
                 statement_node = self.parse_while()
-                self.debug("</While>")
-
-            # for statement
             elif self.match(TokenType.FOR):
-                self.debug("<For>")
                 statement_node = self.parse_for()
-                self.debug("</For>")
-
-            # if statement
             elif self.match(TokenType.IF):
-                self.debug("<If>")
                 statement_node = self.parse_if()
-                self.debug("</If>")
-
-            # print statement
             elif self.match(TokenType.PRINT):
-                self.debug("<Print>")
                 statement_node = self.parse_print()
-                self.debug("</Print>")
-
-            # input statement
             elif self.match(TokenType.INPUT):
-                self.debug("<Input>")
                 statement_node = self.parse_input()
-                self.debug("</Input>")
+            else:
+                raise ParserError("Unexpected token: " + self.curr_tkn.value,
+                                  self.curr_tkn.line_num, self.curr_tkn.column_num)
 
         statement_node.start_pos = start_pos
         statement_node.end_pos = self.curr_tkn.pos
@@ -279,20 +252,13 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.LPAR)
             self.__expect_and_consume(TokenType.RPAR)
         else:
-            self.debug("<Params>")
             args = self.parse_params()
-            self.debug("</Params>")
-
         self.__expect_and_consume(TokenType.TO)
         if TokenType.statement_start(self.curr_tkn):
-            self.debug("<Statements>")
             body = self.parse_body()
-            self.debug("</Statements>")
         else:
             self.__expect_and_consume(TokenType.LBRACE)
-            self.debug("<Statements>")
             body = self.parse_body()
-            self.debug("</Statements>")
             self.__expect_and_consume(TokenType.RBRACE)
 
         return FuncDefNode(identifier, args, body)
@@ -302,14 +268,14 @@ class Parser(AComponent):
         funcCall: ID args
         @return: CallNode
         """
+        self.debug("<FuncCall>")
+
         identifier = self.curr_tkn.value
         start_pos = self.curr_tkn.pos
-
         self.__expect_and_consume(TokenType.ID)
-        self.debug("<Args>")
         args = self.parse_args()
-        self.debug("</Args>")
 
+        self.debug("</FuncCall>")
         call_node = CallNode(identifier, args)
         call_node.start_pos = start_pos
         call_node.end_pos = self.curr_tkn.pos
@@ -320,9 +286,10 @@ class Parser(AComponent):
         PostfixExpr: ID (UN_ADD | UN_SUB)
         @return: PostfixExprNode
         """
+        self.debug("<Postfix>")
+
         postfix_node = None
         start_pos = self.curr_tkn.pos
-
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -334,6 +301,7 @@ class Parser(AComponent):
             self.__expect_and_consume(TokenType.UN_SUB)
             postfix_node = PostfixExprNode(left_node, "--")
 
+        self.debug("</Postfix>")
         postfix_node.start_pos = start_pos
         postfix_node.end_pos = self.curr_tkn.pos
         return postfix_node
@@ -343,21 +311,19 @@ class Parser(AComponent):
         Assignment: ID ASSIGN (expr | callable)
         @return: AssignmentNode
         """
-        start_pos = self.curr_tkn.pos
+        self.debug("<Assignment>")
 
+        start_pos = self.curr_tkn.pos
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
         self.__expect_and_consume(TokenType.ASSIGN)
         if TokenType.callable(self.curr_tkn) and self.peek_token().type == TokenType.LPAR:
-            self.debug("<Callable>")
             right_node = self.parse_callable()
-            self.debug("</Callable>")
         else:
-            self.debug("<Expr>")
             right_node = self.parse_expr()
-            self.debug("</Expr>")
 
+        self.debug("<Assignment>")
         assignment_node = AssignmentNode(left_node, right_node)
         assignment_node.start_pos = start_pos
         assignment_node.end_pos = self.curr_tkn.pos
@@ -368,22 +334,20 @@ class Parser(AComponent):
         WhileStatement: WHILE ( expr ) { ( body | BREAK | CONTINUE) }
         @return: WhileNode
         """
+        self.debug("<While>")
+
         right_node = None
         self.__expect_and_consume(TokenType.WHILE)
-
         self.__expect_and_consume(TokenType.LPAR)
-        self.debug("<Expr>")
         left_node = self.parse_expr()
-        self.debug("</Expr>")
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
-            self.debug("<Cond Body>")
             right_node = self.parse_conditional_body()
-            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
+        self.debug("</While>")
         return WhileNode(left_node, right_node)
 
     def parse_for(self):
@@ -391,27 +355,26 @@ class Parser(AComponent):
         ForStatement: FOR ID TO ( NUM, NUM ) { body }
         @return: ForNode
         """
+        self.debug("<For>")
+
         body = None
         self.__expect_and_consume(TokenType.FOR)
-
         identifier = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
         self.__expect_and_consume(TokenType.TO)
-        self.__expect_and_consume(TokenType.LPAR)
 
+        self.__expect_and_consume(TokenType.LPAR)
         range_start = self.parse_expr()
         self.__expect_and_consume(TokenType.COMMA)
-
         range_end = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
-            self.debug("<Cond Body>")
             body = self.parse_conditional_body()
-            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
+        self.debug("</For>")
         return ForNode(identifier, range_start, range_end, body)
 
     def parse_if(self):
@@ -419,31 +382,28 @@ class Parser(AComponent):
         IfStatement: IF ( expr ) { body }
         @return: IfNode
         """
-        right_node = None
-        self.__expect_and_consume(TokenType.IF)
+        self.debug("<If>")
 
+        body_node = None
+        self.__expect_and_consume(TokenType.IF)
         self.__expect_and_consume(TokenType.LPAR)
-        self.debug("<Expr>")
-        left_node = self.parse_expr()
-        self.debug("</Expr>")
+        expr_node = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
-            self.debug("<Cond Body>")
-            right_node = self.parse_conditional_body()
-            self.debug("</Cond Body>")
+            body_node = self.parse_conditional_body()
         self.__expect_and_consume(TokenType.RBRACE)
 
         # Parse elif and else statements
-        if_node = IfNode(left_node, right_node)
+        if_node = IfNode(expr_node, body_node)
         while self.match(TokenType.ELIF):
-            self.debug("<Elif>")
             if_node.append_else_if(self.parse_elif())
-            self.debug("</Elif>")
 
         if self.match(TokenType.ELSE):
             if_node.set_else_body(self.parse_else())
+
+        self.debug("</If>")
         return if_node
 
     def parse_elif(self):
@@ -451,39 +411,38 @@ class Parser(AComponent):
         ElifStatement: ELIF ( expr ) { body }
         @return: ElifNode
         """
-        right_node = None
-        self.__expect_and_consume(TokenType.ELIF)
+        self.debug("<Elif>")
+        body_node = None
 
+        self.__expect_and_consume(TokenType.ELIF)
         self.__expect_and_consume(TokenType.LPAR)
-        self.debug("<Expr>")
-        left_node = self.parse_expr()
-        self.debug("</Expr>")
+        expr_node = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
-            self.debug("<Cond Body>")
-            right_node = self.parse_conditional_body()
-            self.debug("</Cond Body>")
+            body_node = self.parse_conditional_body()
         self.__expect_and_consume(TokenType.RBRACE)
 
-        return ElifNode(left_node, right_node)
+        self.debug("</Elif>")
+        return ElifNode(expr_node, body_node)
 
     def parse_else(self):
         """
         ElseStatement: ELSE { body }
         @return: BodyNode
         """
+        self.debug("<Else>")
+
         body = None
         self.__expect_and_consume(TokenType.ELSE)
 
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
-            self.debug("<Cond Body>")
             body = self.parse_conditional_body()
-            self.debug("</Cond Body>")
         self.__expect_and_consume(TokenType.RBRACE)
 
+        self.debug("</Else>")
         return body
 
     def parse_return(self):
@@ -491,17 +450,17 @@ class Parser(AComponent):
         ReturnStatement: RETURN expr?
         @return: ReturnNode
         """
-        start_pos = self.curr_tkn.pos
+        self.debug("<Return>")
 
+        start_pos = self.curr_tkn.pos
         self.__expect_and_consume(TokenType.RET)
 
         return_node = ReturnNode()
         if (TokenType.expression(self.curr_tkn) and
                 self.peek_token().type != TokenType.ASSIGN):
-            self.debug("<Expr>")
             return_node.set_expr(self.parse_expr())
-            self.debug("</Expr>")
 
+        self.debug("</Return>")
         return_node.start_pos = start_pos
         return_node.end_pos = self.curr_tkn.pos
         return return_node
@@ -511,14 +470,15 @@ class Parser(AComponent):
         PrintStatement: PRINT args
         @return: PrintNode
         """
+        self.debug("<Print>")
+
         start_pos = self.curr_tkn.pos
 
         self.__expect_and_consume(TokenType.PRINT)
-        self.debug("<Args>")
         args = self.parse_args()
-        self.debug("</Args>")
-
         print_node = PrintNode(args)
+
+        self.debug("</Print>")
         print_node.start_pos = start_pos
         print_node.end_pos = self.curr_tkn.pos
         return print_node
@@ -528,8 +488,9 @@ class Parser(AComponent):
         InputStatement: INPUT (STR)?
         @return: InputNode
         """
-        start_pos = self.curr_tkn.pos
+        self.debug("<Input>")
 
+        start_pos = self.curr_tkn.pos
         self.__expect_and_consume(TokenType.INPUT)
         self.__expect_and_consume(TokenType.LPAR)
 
@@ -538,8 +499,9 @@ class Parser(AComponent):
             msg = self.curr_tkn.value
             self.__expect_and_consume(TokenType.STR)
         self.__expect_and_consume(TokenType.RPAR)
-
         input_node = InputNode(msg)
+
+        self.debug("</Input>")
         input_node.start_pos = start_pos
         input_node.end_pos = self.curr_tkn.pos
         return input_node
@@ -549,6 +511,8 @@ class Parser(AComponent):
         params: param (',' param)*
         @return: ArgsNode
         """
+        self.debug("<Params>")
+
         params = ArgsNode()
         params.start_pos = self.curr_tkn.pos
 
@@ -572,6 +536,7 @@ class Parser(AComponent):
                 self.debug("</Param>")
         self.__expect_and_consume(TokenType.RPAR)
 
+        self.debug("</Params>")
         params.end_pos = self.curr_tkn.pos
         return params
 
@@ -580,23 +545,21 @@ class Parser(AComponent):
         args: arg (',' arg)*
         @return: ArgsNode
         """
+        self.debug("<Args>")
+
         args = ArgsNode()
         args.start_pos = self.curr_tkn.pos
 
         self.__expect_and_consume(TokenType.LPAR)
         if TokenType.expression(self.curr_tkn) or TokenType.callable(self.curr_tkn):
-            self.debug("<Arg>")
             args.append(self.parse_arg())
-            self.debug("</Arg>")
 
             while self.match(TokenType.COMMA):
                 self.__expect_and_consume(TokenType.COMMA)
-
-                self.debug("<Arg>")
                 args.append(self.parse_arg())
-                self.debug("</Arg>")
         self.__expect_and_consume(TokenType.RPAR)
 
+        self.debug("</Args>")
         args.end_pos = self.curr_tkn.pos
         return args
 
@@ -605,14 +568,14 @@ class Parser(AComponent):
         arg: callable | expr
         @return: CallNode | ExprNode
         """
+        self.debug("<Arg>")
+
         if self.peek_token().type == TokenType.LPAR:
-            self.debug("<Callable>")
             arg = self.parse_callable()
-            self.debug("</Callable>")
         else:
-            self.debug("<Expr>")
             arg = self.parse_expr()
-            self.debug("</Expr>")
+
+        self.debug("</Arg>")
         return arg
 
     def parse_callable(self):
@@ -620,31 +583,30 @@ class Parser(AComponent):
         callable: PRINT | INPUT | ID args
         @return: PrintNode | InputNode | CallNode
         """
+        self.debug("<Callable>")
+
         call_node = None
         start_pos = self.curr_tkn.pos
 
         if self.match(TokenType.PRINT):
-            self.debug("<Print>")
             call_node = self.parse_print()
-            self.debug("</Print>")
         elif self.match(TokenType.INPUT):
-            self.debug("<Input>")
             call_node = self.parse_input()
-            self.debug("</Input>")
         elif self.match(TokenType.ID):
-            self.debug("<FuncCall>")
             call_node = self.parse_func_call()
-            self.debug("</FuncCall>")
 
+        self.debug("</Callable>")
         call_node.start_pos = start_pos
         call_node.end_pos = self.curr_tkn.pos
         return call_node
 
     def parse_expr(self):
         """
-        expr: simpleExpr | simpleExpr relationalOp expr
+        expr: simpleExpr | simpleExpr relationalOp simpleExpr
         @return: ExprNode
         """
+        self.debug("<Expr>")
+
         expr_node = ExprNode()
         expr_node.start_pos = self.curr_tkn.pos
 
@@ -653,17 +615,13 @@ class Parser(AComponent):
                 self.curr_tkn.type, "[EXPRESSION_TYPE]",
                 self.curr_tkn.line_num, self.curr_tkn.column_num)
 
-        self.debug("<SimpleExpr>")
         expr_node.left = self.parse_simple_expr()
-        self.debug("</SimpleExpr>")
-
         if TokenType.rel_op(self.curr_tkn):
             expr_node.op = self.handle_op_token()
 
-            self.debug("<Expr>")
             expr_node.right = self.parse_expr()
-            self.debug("</Expr>")
 
+        self.debug("</Expr>")
         expr_node.end_pos = self.curr_tkn.pos
         return expr_node
 
@@ -672,60 +630,63 @@ class Parser(AComponent):
         simpleExpr: term | term addOp simpleExpr
         @return: SimpleExprNode
         """
-        simple_expr = SimpleExprNode()
-        simple_expr.start_pos = self.curr_tkn.pos
+        self.debug("<SimpleExpr>")
 
+        start_pos = self.curr_tkn.pos
         if not TokenType.term(self.curr_tkn):
             throw_unexpected_token_err(
                 self.curr_tkn.type, "[SIMPLE_EXPR_TYPE]",
                 self.curr_tkn.line_num, self.curr_tkn.column_num)
 
-        self.debug("<Term>")
-        simple_expr.left = self.parse_term()
-        self.debug("</Term>")
+        left = self.parse_term()
+        while TokenType.add_op(self.curr_tkn):
+            op = self.handle_op_token()
+            right = self.parse_term()
+            left = SimpleExprNode(left, right, op)
 
-        if TokenType.add_op(self.curr_tkn):
-            simple_expr.op = self.handle_op_token()
-
-            self.debug("<SimpleExpr>")
-            simple_expr.right = self.parse_simple_expr()
-            self.debug("</SimpleExpr>")
-
-        simple_expr.end_pos = self.curr_tkn.pos
-        return simple_expr
+        self.debug("</SimpleExpr>")
+        left.start_pos = start_pos
+        left.end_pos = self.curr_tkn.pos
+        return left
 
     def parse_term(self):
         """
         term: factor | factor mulOp term
         @return: TermNode
         """
-        term = TermNode()
-        term.start_pos = self.curr_tkn.pos
+        self.debug("<Term>")
 
+        start_pos = self.curr_tkn.pos
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
                 self.curr_tkn.type, "[TERM_TYPE]", self.curr_tkn.line_num,
                 self.curr_tkn.column_num)
 
-        self.debug("<Factor>")
-        term.left = self.parse_factor()
-        self.debug("</Factor>")
+        # self.debug("<Factor>")
+        left = self.parse_factor()
+        # self.debug("</Factor>")
 
-        if TokenType.mul_op(self.curr_tkn):
-            term.op = self.handle_op_token()
+        while TokenType.mul_op(self.curr_tkn):
+            op = self.handle_op_token()
 
-            self.debug("<Term>")
-            term.right = self.parse_term()
-            self.debug("</Term>")
+            # self.debug("<Factor>")
+            right = self.parse_factor()
+            # self.debug("</Factor>")
 
-        term.end_pos = self.curr_tkn.pos
-        return term
+            left = TermNode(left, right, op)
+
+        self.debug("</Term>")
+        left.start_pos = start_pos
+        left.end_pos = self.curr_tkn.pos
+        return left
 
     def parse_factor(self):
         """
         factor: ID | INT | INT '.' INT | STR | TRUE | FALSE | LPAR expr RPAR | NOT factor | NEG factor | Func_Call
         @return: FactorNode
         """
+        self.debug("<Factor>")
+
         factor_node = None
         if not TokenType.factor(self.curr_tkn):
             throw_unexpected_token_err(
@@ -764,28 +725,20 @@ class Parser(AComponent):
 
         elif self.match(TokenType.LPAR):
             self.__expect_and_consume(TokenType.LPAR)
-
-            self.debug("<Expr>")
             factor_node = self.parse_expr()
-            self.debug("</Expr>")
             self.__expect_and_consume(TokenType.RPAR)
 
         elif self.match(TokenType.NOT):
-
             left_node = self.handle_op_token()
-            self.debug("<Factor>")
             right_node = self.parse_factor()
-            self.debug("</Factor>")
+            factor_node = FactorNode(left_node, right_node)
 
-            return FactorNode(left_node, right_node)
         elif self.match(TokenType.NEG):
-
             left_node = self.handle_op_token()
-            self.debug("<Factor>")
             right_node = self.parse_factor()
-            self.debug("</Factor>")
+            factor_node = FactorNode(left_node, right_node)
 
-            return FactorNode(left_node, right_node)
+        self.debug("</Factor>")
         return factor_node
 
     def parse_repl(self):
@@ -795,10 +748,8 @@ class Parser(AComponent):
         """
         if self.match(TokenType.ENDMARKER):
             return None
-
         elif self.match(TokenType.DEF):
             return self.parse_func_def()
-
         elif TokenType.statement_start(self.curr_tkn):
             if TokenType.bin_op(self.peek_token()):
                 return self.parse_expr()

@@ -19,6 +19,7 @@ class TestNyaa(TestCase):
         self.lexer = Lexer()
         self.parser = Parser()
         self.interpreter = Interpreter()
+        self.num_random_tests = 50000
 
     def tearDown(self):
         self.lexer = None
@@ -110,6 +111,90 @@ class TestNyaa(TestCase):
 
         if failed:
             self.fail()
+
+    def test_operator_precedence_expressions(self):
+        header = "Testing Operator Precedence Expressions"
+        print(header)
+        print(f"-" * len(header))
+
+        import random
+        operators = [('purasu', '+'), ('mainasu', '-'),
+                     ('purodakuto', '*'), ('supuritto', '/')]
+
+        start = -sys.maxsize - 1
+        end = sys.maxsize
+        for _ in range(self.num_random_tests):
+            a = random.randint(start, end)
+            b = random.randint(start, end)
+            c = random.randint(start, end)
+            d = random.randint(start, end)
+            e = random.randint(start, end)
+            f = random.randint(start, end)
+
+            op1 = random.choice(operators)
+            op2 = random.choice(operators)
+            op3 = random.choice(operators)
+
+            repl_input = f"{a} {op1[0]} {b} {op2[0]} {c} {op3[0]} {d} {op1[0]} {e} {op2[0]} {f}"
+            eval_input = f"{a} {op1[1]} {b} {op2[1]} {c} {op3[1]} {d} {op1[1]} {e} {op2[1]} {f}"
+
+            ast = self.parser.parse_source(repl_input=repl_input)
+            try:
+                expected = eval(eval_input)
+                result = self.interpreter.interpret(ast)
+
+                if result.value != expected:
+                    self.fail(f"EXPRESSION:\n"
+                              f"    {eval_input}\n"
+                              f"EXPECTED RESULT= {expected}\n"
+                              f"ACTUAL RESULT=  {result.value}\n")
+            except ZeroDivisionError:
+                continue
+            except Exception as e:
+                print(e, file=sys.stderr)
+                assert False
+        print(f"{SUCCESS}  Passed{ENDC}")
+
+    def test_prioritized_expressions(self):
+        header = "Testing Prioritized Expressions"
+        print(header)
+        print(f"-" * len(header))
+
+        import random
+        operators = [('purasu', '+'), ('mainasu', '-'),
+                     ('purodakuto', '*'), ('supuritto', '/'),
+                     ('ando', 'and'), ('matawa', 'or')]
+
+        start = -sys.maxsize - 1
+        end = sys.maxsize
+        for _ in range(self.num_random_tests // 10):
+            a = random.randint(start, end)
+            b = random.randint(start, end)
+            c = random.randint(start, end)
+            d = random.randint(start, end)
+
+            op1 = random.choice(operators)
+            op2 = random.choice(operators)
+            op3 = random.choice(operators)
+
+            repl_input = f"({a} {op1[0]} {b}) {op2[0]} ({c} {op3[0]} {d})"
+            eval_input = f"({a} {op1[1]} {b}) {op2[1]} ({c} {op3[1]} {d})"
+            ast = self.parser.parse_source(repl_input=repl_input)
+            try:
+                expected = eval(eval_input)
+                result = self.interpreter.interpret(ast)
+
+                if result.value != expected:
+                    self.fail(f"EXPRESSION:\n"
+                              f"    {eval_input}\n"
+                              f"EXPECTED RESULT= {expected}\n"
+                              f"ACTUAL RESULT=  {result.value}\n")
+            except ZeroDivisionError:
+                continue
+            except Exception as e:
+                print(e, file=sys.stderr)
+                assert False
+        print(f"{SUCCESS}  Passed{ENDC}")
 
 
 if __name__ == '__main__':

@@ -2,9 +2,9 @@ import sys
 
 from src.core.AComponent import AComponent
 from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
-    FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, \
-    AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode, \
-    BreakNode, ContinueNode, PassNode
+    FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, AssignmentNode, \
+    PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode, BreakNode, \
+    ContinueNode, PassNode
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
@@ -60,9 +60,8 @@ class Interpreter(AComponent):
         if self.__visitor_depth >= MAX_VISIT_DEPTH:
             # visitor depth exceeded and an error should be thrown
             # to prevent the Python interpreter from a segfault
-            raise RecursionError(
-                "Visitor depth exceeded! You've ventured too far into the code jungle. "
-                "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
+            raise RecursionError("Visitor depth exceeded! You've ventured too far into the code jungle. "
+                                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)")
 
         self.__visitor_depth += 1
         method = f"visit_{node.label}"
@@ -147,12 +146,18 @@ class Interpreter(AComponent):
             return node.expr.accept(self)
 
     def visit_pass(self, node: 'PassNode'):
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
         pass
 
     def visit_break(self, node: 'BreakNode'):
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
         self.break_flag = True
 
     def visit_continue(self, node: 'ContinueNode'):
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
         self.continue_flag = True
 
     def __handle_conditional_execution(self, body_node: 'BodyNode'):
@@ -229,8 +234,8 @@ class Interpreter(AComponent):
                 runtime_object = range_node.accept(self)
                 return int(runtime_object.value)
             except ValueError:
-                raise InterpreterError(ErrorType.RUNTIME,
-                                       "Range value must be integers", range_node.start_pos, range_node.end_pos)
+                raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
+                                       range_node.start_pos, range_node.end_pos)
 
         range_start = validate_range_node(node.range_start)
         range_end = validate_range_node(node.range_end)
@@ -272,10 +277,10 @@ class Interpreter(AComponent):
 
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
-                raise InterpreterError(ErrorType.RUNTIME,
-                                       f"Invalid number of arguments provided...\n"
-                                       f"Expected {len(function_symbol.params)} "
-                                       f"but got {len(function_args)}", node.args.start_pos, node.args.end_pos)
+                raise InterpreterError(ErrorType.RUNTIME, f"Invalid number of arguments provided...\n"
+                                                          f"Expected {len(function_symbol.params)} "
+                                                          f"but got {len(function_args)}",
+                                       node.args.start_pos, node.args.end_pos)
 
             for i, param in enumerate(function_symbol.params):  # assing arg values to local variables
                 local_env.insert_variable(param, function_args[i])
@@ -381,8 +386,7 @@ class Interpreter(AComponent):
                 return self.handle_relational_expressions(left, right, node.op)
 
             # Invalid operation
-            throw_invalid_operation_err(left.label, node.op, right.label,
-                                        self.node_start_pos, self.node_end_pos)
+            throw_invalid_operation_err(left.label, node.op, right.label, self.node_start_pos, self.node_end_pos)
         return left
 
     def handle_additive_expressions(self, left, right, op):
@@ -408,8 +412,7 @@ class Interpreter(AComponent):
             return RunTimeObject(left.label, left.value or right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label,
-                                    self.node_start_pos, self.node_end_pos)
+        throw_invalid_operation_err(left.label, op, right.label, self.node_start_pos, self.node_end_pos)
 
     def handle_multiplicative_expressions(self, left, right, op):
         """
@@ -432,8 +435,7 @@ class Interpreter(AComponent):
 
             if left.label == "number" and left.label == right.label:
                 if right.value == 0:
-                    raise InterpreterError(ErrorType.RUNTIME,
-                                           "Division by zero is not kawaii, please don't do that.",
+                    raise InterpreterError(ErrorType.RUNTIME, "Division by zero is not kawaii, please don't do that.",
                                            self.node_start_pos, self.node_end_pos)
                 return RunTimeObject("number", left.value / right.value)
 
@@ -441,8 +443,7 @@ class Interpreter(AComponent):
             return RunTimeObject(right.label, left.value and right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label,
-                                    self.node_start_pos, self.node_end_pos)
+        throw_invalid_operation_err(left.label, op, right.label, self.node_start_pos, self.node_end_pos)
 
     def handle_relational_expressions(self, left, right, op):
         """
@@ -465,8 +466,7 @@ class Interpreter(AComponent):
             return RunTimeObject("boolean", res)
 
         # Invalid operation
-        throw_invalid_operation_err(left.label, op, right.label,
-                                    self.node_start_pos, self.node_end_pos)
+        throw_invalid_operation_err(left.label, op, right.label, self.node_start_pos, self.node_end_pos)
 
     def visit_factor(self, node: 'FactorNode'):
         """
