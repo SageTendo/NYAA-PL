@@ -1,0 +1,1 @@
+uWu_nyaa() => yomu(3 supuritto 0);
