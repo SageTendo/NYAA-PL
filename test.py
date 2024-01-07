@@ -19,7 +19,7 @@ class TestNyaa(TestCase):
         self.lexer = Lexer()
         self.parser = Parser()
         self.interpreter = Interpreter()
-        self.num_random_tests = 50000
+        self.num_random_tests = 25000
 
     def tearDown(self):
         self.lexer = None
@@ -48,12 +48,47 @@ class TestNyaa(TestCase):
                 print(e, file=sys.stderr)
                 self.fail()
 
+    def test_lexer_errors(self):
+        header = "Testing Lexer Errors"
+        print(header)
+        print(f"-" * len(header))
+
+        test_dir = os.path.join(self.test_dir, "errors/lexer/")
+        for file in os.listdir(test_dir):
+            if not file.endswith(".lex"):
+                continue
+
+            output_file = file.replace(".lex", ".out")
+            with open(os.path.join(test_dir, output_file)) as f:
+                expected = f.read()
+
+            print(f"[Lexer Error] Running test on: {file}")
+            try:
+                self.lexer.analyze_src_file(test_dir + file)
+
+                token = Token()
+                while token.type != TokenType.ENDMARKER:
+                    token = self.lexer.get_token()
+                    print(" ", token)
+
+                self.fail()
+            except Exception as e:
+                if expected.lower() not in str(e).lower():
+                    print(expected in str(e))
+                    print(e)
+                    self.fail(f"EXPECTED:\n"
+                              f"    {expected}\n"
+                              f"ACTUAL:\n"
+                              f"    {e}")
+            finally:
+                self.lexer.__init__()
+
     def test_parser(self):
         header = "Testing Parser"
         print(header)
         print(f"-" * len(header))
 
-        test_dir = os.path.join(self.test_dir, "parser/")
+        test_dir = os.path.join(self.test_dir, "interpreter/in/")
         for file in os.listdir(test_dir):
             print(f"[Parser] Running test on: {file}")
 
@@ -112,6 +147,33 @@ class TestNyaa(TestCase):
         if failed:
             self.fail()
 
+    def test_interpreter_errors(self):
+        header = "Testing Interpreter Errors"
+        print(header)
+        print(f"-" * len(header))
+
+        test_dir = os.path.join(self.test_dir, "errors/interpreter/")
+        for file in os.listdir(test_dir):
+            if not file.endswith(".ny"):
+                continue
+
+            output_file = file.replace(".ny", ".out")
+            with open(os.path.join(test_dir, output_file)) as f:
+                expected = f.read()
+
+            proc = subprocess.run(
+                ["python3", "nyaa.py", test_dir + file],
+                capture_output=True,
+                text=True
+            )
+
+            print(f"[Interpreter Error] Running test on: {file}")
+            if expected.lower().strip() not in str(proc.stderr).lower().strip():
+                self.fail(f"EXPECTED:\n"
+                          f"    {expected}\n"
+                          f"ACTUAL:\n"
+                          f"    {proc.stderr}")
+
     def test_operator_precedence_expressions(self):
         header = "Testing Operator Precedence Expressions"
         print(header)
@@ -167,7 +229,7 @@ class TestNyaa(TestCase):
 
         start = -sys.maxsize - 1
         end = sys.maxsize
-        for _ in range(self.num_random_tests // 10):
+        for _ in range(self.num_random_tests // 2):
             a = random.randint(start, end)
             b = random.randint(start, end)
             c = random.randint(start, end)

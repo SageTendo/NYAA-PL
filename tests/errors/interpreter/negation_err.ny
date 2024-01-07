@@ -1,3 +1,3 @@
 uWu_nyaa() => {
-    modoru
+    yomu(-"1")
 }

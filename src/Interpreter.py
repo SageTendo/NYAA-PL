@@ -230,12 +230,13 @@ class Interpreter(AComponent):
             @return int: The validated range value.
             @raise InterpreterError: If the range value is not an integer.
             """
-            try:
-                runtime_object = range_node.accept(self)
-                return int(runtime_object.value)
-            except ValueError:
-                raise InterpreterError(ErrorType.RUNTIME, "Range value must be integers",
+            runtime_object = range_node.accept(self)
+            if type(runtime_object.value) is not int:
+                raise InterpreterError(ErrorType.RUNTIME,
+                                       f"Range value '{type(runtime_object.value).__name__}' "
+                                       f"cannot be used as an integer",
                                        range_node.start_pos, range_node.end_pos)
+            return runtime_object.value
 
         range_start = validate_range_node(node.range_start)
         range_end = validate_range_node(node.range_end)
@@ -487,12 +488,10 @@ class Interpreter(AComponent):
                 return RunTimeObject("boolean", not right_factor.value)
 
             elif left_factor.value == '-':
-                if right_factor.label == "number":
+                try:
                     return RunTimeObject("number", -right_factor.value)
-
-                raise InterpreterError(ErrorType.TYPE,
-                                       f"Value '{right_factor.value}' of variable is not a numeric type",
-                                       self.node_start_pos, self.node_end_pos)
+                except TypeError as e:
+                    raise InterpreterError(ErrorType.TYPE, e.args[0], self.node_start_pos, self.node_end_pos)
         return left_factor
 
     @staticmethod
