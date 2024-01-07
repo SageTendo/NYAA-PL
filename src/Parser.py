@@ -230,9 +230,6 @@ class Parser(AComponent):
                 statement_node = self.parse_print()
             elif self.match(TokenType.INPUT):
                 statement_node = self.parse_input()
-            else:
-                raise ParserError("Unexpected token: " + self.curr_tkn.value,
-                                  self.curr_tkn.line_num, self.curr_tkn.column_num)
 
         statement_node.start_pos = start_pos
         statement_node.end_pos = self.curr_tkn.pos

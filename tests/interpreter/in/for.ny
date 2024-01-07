@@ -25,17 +25,18 @@ uWu_nyaa() => {
     }
     yomu()
 
-    for i => (1 supuritto 1, 10) {
+    a wa 10
+    for i => (1, a) {
         yomu(i)
     }
     yomu()
 
-    for i => (IIE, HAI) {
+    for i => (0, 1) {
         yomu(i)
     }
     yomu()
 
-    for _ => (HAI, IIE) {
+    for _ => (1, 0) {
         yomu(_)
     }
     yomu(_)
