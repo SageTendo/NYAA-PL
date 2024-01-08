@@ -15,8 +15,7 @@ funcDef            : DEFINE ID LPAR (ID (',' ID)*)? RPAR TO LBRACE body RBRACE;
 body               : statement*;
 conditionalBody    : statement conditionalBody? | BREAK | CONTINUE;
 
-statement          : PASS
-                    |assignmentStatement
+statement          : assignmentStatement
                     |retStatement
                     |whileStatement
                     |ifStatement
@@ -83,7 +82,6 @@ ELSE : 'baka';
 RANGE: 'from';
 BREAK: 'yamete';
 CONTINUE: 'motto';
-PASS: 'pasu';
 DEFINE: 'kawaii';
 TRUE: 'HAI';
 FALSE: 'IIE';

@@ -24,7 +24,6 @@ class TokenType(Enum):
     FALSE = auto()  # IIE
 
     # Breaks
-    PASS = auto()  # pasu
     CONTINUE = auto()  # motto
     BREAK = auto()  # yamete
     RET = auto()  # modoru
@@ -72,9 +71,9 @@ class TokenType(Enum):
     @classmethod
     def statement_start(cls, token):
         return token.type in [
-            TokenType.PASS, TokenType.RET,
-            TokenType.ID, TokenType.WHILE, TokenType.FOR, TokenType.IF,
-            TokenType.PRINT, TokenType.INPUT
+            TokenType.RET, TokenType.ID, TokenType.WHILE,
+            TokenType.FOR, TokenType.IF, TokenType.PRINT,
+            TokenType.INPUT
         ]
 
     @classmethod

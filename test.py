@@ -9,7 +9,7 @@ from src.Lexer import Lexer
 from src.Parser import Parser
 from src.core.Token import Token
 from src.core.Types import TokenType
-from src.utils.Constants import WARNING, SUCCESS, ENDC
+from src.utils.Constants import WARNING, SUCCESS, ENDC, ERROR
 
 
 class TestNyaa(TestCase):
@@ -25,6 +25,7 @@ class TestNyaa(TestCase):
         self.lexer = None
         self.parser = None
         self.Interpreter = None
+        print("", flush=True)
 
     def test_lexer(self):
         header = "Testing Lexer"
@@ -41,10 +42,9 @@ class TestNyaa(TestCase):
                 token = Token()
                 while token.type != TokenType.ENDMARKER:
                     token = self.lexer.get_token()
-                    print(" ", token)
-
                 print(f"{SUCCESS}  Passed{ENDC}")
             except Exception as e:
+                print(f"{ERROR}  Failed{ENDC}")
                 print(e, file=sys.stderr)
                 self.fail()
 
@@ -69,17 +69,19 @@ class TestNyaa(TestCase):
                 token = Token()
                 while token.type != TokenType.ENDMARKER:
                     token = self.lexer.get_token()
-                    print(" ", token)
+                print(" ", token)
 
                 self.fail()
             except Exception as e:
                 if expected.lower() not in str(e).lower():
+                    print(f"{ERROR}  Failed{ENDC}")
                     print(expected in str(e))
                     print(e)
                     self.fail(f"EXPECTED:\n"
                               f"    {expected}\n"
                               f"ACTUAL:\n"
                               f"    {e}")
+                print(f"{SUCCESS}  Passed{ENDC}")
             finally:
                 self.lexer.__init__()
 
@@ -93,9 +95,10 @@ class TestNyaa(TestCase):
             print(f"[Parser] Running test on: {file}")
 
             try:
-                self.parser.parse_source(source_path=test_dir + file, dflags={"parser": True})
-                print(f"{SUCCESS}  Passed{ENDC}\n")
+                self.parser.parse_source(source_path=test_dir + file)
+                print(f"{SUCCESS}  Passed{ENDC}")
             except Exception as e:
+                print(f"{ERROR}  Failed{ENDC}")
                 print(e, file=sys.stderr)
                 self.fail()
 
@@ -169,10 +172,12 @@ class TestNyaa(TestCase):
 
             print(f"[Interpreter Error] Running test on: {file}")
             if expected.lower().strip() not in str(proc.stderr).lower().strip():
+                print(f"{ERROR}  Failed{ENDC}")
                 self.fail(f"EXPECTED:\n"
                           f"    {expected}\n"
                           f"ACTUAL:\n"
                           f"    {proc.stderr}")
+            print(f"{SUCCESS}  Passed{ENDC}")
 
     def test_operator_precedence_expressions(self):
         header = "Testing Operator Precedence Expressions"
@@ -206,6 +211,7 @@ class TestNyaa(TestCase):
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:
+                    print(f"{ERROR}   Failed{ENDC}")
                     self.fail(f"EXPRESSION:\n"
                               f"    {eval_input}\n"
                               f"EXPECTED RESULT= {expected}\n"
@@ -247,6 +253,7 @@ class TestNyaa(TestCase):
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:
+                    print(f"{WARNING}  Failed{ENDC}")
                     self.fail(f"EXPRESSION:\n"
                               f"    {eval_input}\n"
                               f"EXPECTED RESULT= {expected}\n"

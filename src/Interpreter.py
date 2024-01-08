@@ -4,7 +4,7 @@ from src.core.AComponent import AComponent
 from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
     FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, AssignmentNode, \
     PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode, BreakNode, \
-    ContinueNode, PassNode
+    ContinueNode
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
@@ -144,11 +144,6 @@ class Interpreter(AComponent):
         """
         if node.expr is not None:
             return node.expr.accept(self)
-
-    def visit_pass(self, node: 'PassNode'):
-        self.node_start_pos = node.start_pos
-        self.node_end_pos = node.end_pos
-        pass
 
     def visit_break(self, node: 'BreakNode'):
         self.node_start_pos = node.start_pos
