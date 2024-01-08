@@ -7,12 +7,11 @@ from src.utils.ErrorHandler import LexerError
 RESERVED_WORDS = {
     "uWu_nyaa": TokenType.MAIN, "yomu": TokenType.PRINT, "ohayo": TokenType.INPUT,
     "daijoubu": TokenType.WHILE, "nani": TokenType.IF, "nandesuka": TokenType.ELIF,
-    "baka": TokenType.ELSE, 'yamete': TokenType.BREAK, 'pasu': TokenType.PASS,
-    'motto': TokenType.CONTINUE, 'kawaii': TokenType.DEF, 'HAI': TokenType.TRUE,
-    'IIE': TokenType.FALSE, 'wa': TokenType.ASSIGN, "modoru": TokenType.RET,
-    'purasu': TokenType.PLUS, 'mainasu': TokenType.MINUS, 'purodakuto': TokenType.MULTIPLY,
-    'supuritto': TokenType.DIVIDE, 'ando': TokenType.AND, 'matawa': TokenType.OR,
-    'nai': TokenType.NOT, 'for': TokenType.FOR
+    "baka": TokenType.ELSE, 'yamete': TokenType.BREAK, 'motto': TokenType.CONTINUE,
+    'kawaii': TokenType.DEF, 'HAI': TokenType.TRUE, 'IIE': TokenType.FALSE,
+    'wa': TokenType.ASSIGN, "modoru": TokenType.RET, 'purasu': TokenType.PLUS,
+    'mainasu': TokenType.MINUS, 'purodakuto': TokenType.MULTIPLY, 'supuritto': TokenType.DIVIDE,
+    'ando': TokenType.AND, 'matawa': TokenType.OR, 'nai': TokenType.NOT, 'for': TokenType.FOR
 }
 
 

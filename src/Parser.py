@@ -2,7 +2,7 @@ import sys
 
 from src.Lexer import Lexer
 from src.core.AComponent import AComponent
-from src.core.ASTNodes import BodyNode, ReturnNode, PassNode, ProgramNode, SimpleExprNode, AssignmentNode, \
+from src.core.ASTNodes import BodyNode, ReturnNode, ProgramNode, SimpleExprNode, AssignmentNode, \
     IdentifierNode, \
     PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
     CallNode, InputNode, BreakNode, ContinueNode, \
@@ -192,14 +192,7 @@ class Parser(AComponent):
         statement_node = None
         start_pos = self.curr_tkn.pos
 
-        if self.match(TokenType.PASS):
-            self.__expect_and_consume(TokenType.PASS)
-
-            self.debug("<PASS>")
-            statement_node = PassNode()
-            self.debug("</PASS>")
-
-        elif self.match(TokenType.RET):
+        if self.match(TokenType.RET):
             statement_node = self.parse_return()
 
         elif self.match(TokenType.ID):
