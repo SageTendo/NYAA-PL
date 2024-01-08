@@ -166,7 +166,12 @@ class Lexer(AComponent):
                         self.__next_char()
 
                 elif self.char == "#":
-                    self.__skip_comment()
+                    self.__next_char()
+                    if self.char == "#":
+                        self.__next_char()
+                        self.__skip_multiline_comment(count=2)
+                    else:
+                        self.__skip_comment()
                     token = self.get_token()
                 elif self.char == '<':
                     token.type = TokenType.LT
@@ -307,6 +312,15 @@ class Lexer(AComponent):
 
     def __skip_comment(self):
         while self.char != '\n':
+            self.__next_char()
+
+    def __skip_multiline_comment(self, count):
+        while True:
+            if count == 0:
+                break
+
+            if self.char == '#':
+                count -= 1
             self.__next_char()
 
     @property
