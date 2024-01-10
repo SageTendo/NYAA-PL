@@ -4,6 +4,6 @@ uWu_nyaa() => {
             motto
         }
 
-        yomu(i)
+        yomu_ln(i)
     }
 }

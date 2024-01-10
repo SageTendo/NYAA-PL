@@ -1,8 +1,8 @@
 kawaii test(start, end) => {
     for i => (start, end) {
-        yomu(i)
+        yomu_ln(i)
     }
-    yomu()
+    yomu_ln()
 }
 
 uWu_nyaa() => {
@@ -16,28 +16,28 @@ uWu_nyaa() => {
     # Test raw values
     #
     for i => (0, 10) {
-        yomu(i)
+        yomu_ln(i)
     }
-    yomu()
+    yomu_ln()
 
     for _ => (0 purasu 1, 10 purodakuto 1) {
-        yomu(_)
+        yomu_ln(_)
     }
-    yomu()
+    yomu_ln()
 
     a wa 10
     for i => (1, a) {
-        yomu(i)
+        yomu_ln(i)
     }
-    yomu()
+    yomu_ln()
 
     for i => (0, 1) {
-        yomu(i)
+        yomu_ln(i)
     }
-    yomu()
+    yomu_ln()
 
     for _ => (1, 0) {
-        yomu(_)
+        yomu_ln(_)
     }
-    yomu(_)
+    yomu_ln(_)
 }

@@ -133,9 +133,10 @@ class InputNode(Node):
 
 
 class PrintNode(Node):
-    def __init__(self, args):
+    def __init__(self, args, print_ln=False):
         super().__init__("print")
         self.args = args
+        self.println = print_ln
 
 
 class WhileNode(ConditionalNode):
@@ -220,6 +221,16 @@ class FactorNode(Node):
         super().__init__("factor")
         self.left = left
         self.right = right
+
+
+class ArrayNode(Node):
+    def __init__(self, label, identifier, index=None, size=None, value=None, initial_values=None):
+        super().__init__(label)
+        self.identifier = identifier
+        self.index = index
+        self.size = size
+        self.value = value
+        self.initial_values = initial_values
 
 
 class IdentifierNode(Node):

@@ -1,2 +1,2 @@
 # Simple addition of numbers and prints the result
-uWu_nyaa() => yomu(8 purodakuto 4);
+uWu_nyaa() => yomu_ln(8 purodakuto 4);

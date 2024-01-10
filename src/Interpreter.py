@@ -1,16 +1,17 @@
 import sys
 
 from src.core.AComponent import AComponent
-from src.core.ASTNodes import PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode, \
-    FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode, InputNode, AssignmentNode, \
-    PostfixExprNode, CallNode, FuncDefNode, ReturnNode, BooleanNode, IfNode, WhileNode, ForNode, BreakNode, \
-    ContinueNode
+from src.core.ASTNodes import (PrintNode, BodyNode, ProgramNode, ArgsNode, ExprNode, SimpleExprNode, TermNode,
+                               FactorNode, OperatorNode, IdentifierNode, NumericLiteralNode, StringLiteralNode,
+                               InputNode, AssignmentNode, PostfixExprNode, CallNode, FuncDefNode, ReturnNode,
+                               BooleanNode, IfNode, WhileNode, ForNode, BreakNode, ContinueNode, ArrayNode)
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
+from src.core.Symbol import ArraySymbol
 from src.utils.Constants import WARNING
-from src.utils.ErrorHandler import throw_unary_type_err, throw_invalid_operation_err, warning_msg, success_msg, emoji, \
-    InterpreterError, ErrorType
+from src.utils.ErrorHandler import (throw_unary_type_err, throw_invalid_operation_err,
+                                    warning_msg, success_msg, emoji, InterpreterError, ErrorType)
 
 MAX_VISIT_DEPTH = 5470
 INTERNAL_RECURSION_LIMIT = 1010
@@ -247,6 +248,62 @@ class Interpreter(AComponent):
             if last_evaluated := self.__handle_conditional_execution(node.body):
                 return last_evaluated
 
+    def visit_array_def(self, node: 'ArrayNode'):
+        """
+        Visits an ArrayNode and creates a new array in the symbol table
+        @param node: The ArrayNode to visit
+        """
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
+
+        identifier = node.identifier
+        if node.size is not None:
+            array_size = node.size.accept(self).value
+            values = [RunTimeObject("null", value="null")] * array_size
+
+        elif node.initial_values is not None:
+            array_size = len(node.initial_values)
+            values = [value.accept(self) for value in node.initial_values]
+
+        else:
+            array_size = -1
+            values = []
+
+        array_symbol = ArraySymbol(identifier, array_size, values)
+        self.current_env.insert_array(identifier, array_symbol)
+
+    def visit_array_access(self, node: 'ArrayNode'):
+        """
+        Visits an ArrayNode and returns an element of the array in the symbol table
+        @param node: The ArrayNode to visit
+        """
+        identifier = node.identifier
+        index = self.__test_for_identifier(node.index.accept(self)).value
+        array_symbol = self.current_env.lookup_array(identifier)
+
+        if index < 0 or index >= len(array_symbol.values):
+            raise InterpreterError(ErrorType.RUNTIME, "Array index out of bounds", node.start_pos, node.end_pos)
+
+        return array_symbol.values[index]
+
+    def visit_array_update(self, node: 'ArrayNode'):
+        """
+        Visits an ArrayNode and updates the array in the symbol table
+        @param node: The ArrayNode to visit
+        """
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
+
+        identifier = node.identifier
+        index = self.__test_for_identifier(node.index.accept(self)).value
+        value_runtime = node.value.accept(self)
+
+        array_symbol = self.current_env.lookup_array(identifier)
+        if int(index) < 0 or int(index) >= len(array_symbol.values):
+            raise InterpreterError(ErrorType.RUNTIME, "Array index out of bounds", node.start_pos, node.end_pos)
+
+        array_symbol.values[index] = value_runtime
+
     def visit_assignment(self, node: 'AssignmentNode'):
         """
         Visits an assignment statement and handles the assignment operation of identifiers
@@ -273,10 +330,10 @@ class Interpreter(AComponent):
 
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
-                raise InterpreterError(ErrorType.RUNTIME, f"Invalid number of arguments provided...\n"
-                                                          f"Expected {len(function_symbol.params)} "
-                                                          f"but got {len(function_args)}",
-                                       node.args.start_pos, node.args.end_pos)
+                raise InterpreterError(ErrorType.RUNTIME,
+                                       f"Invalid number of arguments provided...\n"
+                                       f"Expected {len(function_symbol.params)} "
+                                       f"but got {len(function_args)}", node.args.start_pos, node.args.end_pos)
 
             for i, param in enumerate(function_symbol.params):  # assing arg values to local variables
                 local_env.insert_variable(param, function_args[i])
@@ -308,10 +365,16 @@ class Interpreter(AComponent):
         Visits a print statement node and prints the value(s) of evaluated argument(s) to the console
         @param node: The print statement node to visit
         """
-        for arg in node.args.accept(self):
+        args = node.args.accept(self)
+        for i, arg in enumerate(args):
             runtime_value = arg.value
-            print(runtime_value, end=' ')
-        print()
+            if i < len(args) - 1:
+                print(runtime_value, end=" ")
+            else:
+                print(runtime_value, end='')
+
+        if node.println:  # print new line if println is used
+            print()
 
     def visit_postfix_expr(self, node: 'PostfixExprNode'):
         """

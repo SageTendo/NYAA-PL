@@ -52,3 +52,10 @@ class FunctionSymbol(Symbol):
     @property
     def body(self):
         return self.__body
+
+
+class ArraySymbol(Symbol):
+    def __init__(self, name, size=None, values=None):
+        super().__init__(name, None)
+        self.values = values
+        self.size = size

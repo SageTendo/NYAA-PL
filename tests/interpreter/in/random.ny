@@ -13,13 +13,13 @@ kawaii div() => {
 
 uWu_nyaa() => {
     a wa 3
-    yomu(add(15, 5))
-    yomu("hello", "world!")
-    yomu(nai a)
+    yomu_ln(add(15, 5))
+    yomu_ln("hello", "world!")
+    yomu_ln(nai a)
     a wa 32
 
     i wa 100
-    yomu(i)
+    yomu_ln(i)
 
     b wa -5 purasu (3 purodakuto 2)
     b wa 4
@@ -29,14 +29,14 @@ uWu_nyaa() => {
     a++
     a--
     a wa -a purasu b
-    yomu("test")
-    yomu(a ando nai b)
+    yomu_ln("test")
+    yomu_ln(a ando nai b)
 
     a++
     a wa (a purasu b)
     b--
-    yomu(HAI)
-    yomu(IIE)
+    yomu_ln(HAI)
+    yomu_ln(IIE)
 
     daijoubu (a < 1000) {
         a++
@@ -44,10 +44,10 @@ uWu_nyaa() => {
 
     test wa HAI
     nani (test) {
-        yomu()
+        yomu_ln()
         add(2, 3)
     } nandesuka (nai test) {
-        yomu()
+        yomu_ln()
     } baka {
         lol()
     }

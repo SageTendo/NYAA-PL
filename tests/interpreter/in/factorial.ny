@@ -12,5 +12,5 @@ kawaii factorial(x) => {
 # Main program block
 uWu_nyaa() => {
     # print result of factorial(5)
-    yomu(factorial(5))
+    yomu_ln(factorial(5))
 }

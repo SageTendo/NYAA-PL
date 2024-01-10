@@ -1,6 +1,6 @@
 import hashlib
 
-from src.core.Symbol import VarSymbol, FunctionSymbol
+from src.core.Symbol import VarSymbol, FunctionSymbol, ArraySymbol
 
 
 class Environment:
@@ -64,6 +64,19 @@ class Environment:
             return self.parent.lookup_function(name)
 
         raise Exception(f"Function '{name}' not found in '{self.__name}' scope")
+
+    def insert_array(self, name: str, array: 'ArraySymbol'):
+        self.__symbol_table[name] = array
+
+    def lookup_array(self, name, current_scope=False) -> 'ArraySymbol':
+        array = self.__symbol_table.get(name, None)
+        if array and isinstance(array, ArraySymbol):
+            return array
+
+        if not current_scope and self.parent:
+            return self.parent.lookup_array(name)
+
+        raise Exception(f"Array '{name}' not found in '{self.__name}' scope")
 
     @property
     def name(self):

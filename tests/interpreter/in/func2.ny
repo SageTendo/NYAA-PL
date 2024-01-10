@@ -5,5 +5,5 @@ kawaii add() => {
 uWu_nyaa() => {
     a wa 3
     a wa add()
-    yomu(a)
+    yomu_ln(a)
 }
