@@ -2,11 +2,11 @@ import sys
 
 from src.Lexer import Lexer
 from src.core.AComponent import AComponent
-from src.core.ASTNodes import BodyNode, ReturnNode, ProgramNode, SimpleExprNode, AssignmentNode, \
-    IdentifierNode, \
-    PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode, StringLiteralNode, BooleanNode, FactorNode, ExprNode, \
-    CallNode, InputNode, BreakNode, ContinueNode, \
-    WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode, ForNode
+from src.core.ASTNodes import (BodyNode, ReturnNode, ProgramNode, SimpleExprNode, AssignmentNode,
+                               IdentifierNode, PostfixExprNode, PrintNode, ArgsNode, NumericLiteralNode,
+                               StringLiteralNode,
+                               BooleanNode, FactorNode, ExprNode, CallNode, InputNode, BreakNode, ContinueNode,
+                               WhileNode, IfNode, ElifNode, FuncDefNode, TermNode, OperatorNode, ForNode, ArrayNode)
 from src.core.Types import TokenType
 from src.utils.ErrorHandler import success_msg, warning_msg, throw_unexpected_token_err, ParserError, LexerError
 
@@ -196,16 +196,21 @@ class Parser(AComponent):
             statement_node = self.parse_return()
 
         elif self.match(TokenType.ID):
-            # assignment statement
             if self.peek_token().type == TokenType.ASSIGN:
                 statement_node = self.parse_assignment()
 
             elif TokenType.postfix(self.peek_token()):
                 statement_node = self.parse_postfix()
 
-            # call (func calls) statement
             elif self.peek_token().type == TokenType.LPAR:
                 statement_node = self.parse_func_call()
+
+            elif self.peek_token().type == TokenType.TO:
+                statement_node = self.parse_array_def()
+
+            elif self.peek_token().type == TokenType.LBRACKET:
+                statement_node = self.parse_array_assignment()
+
             else:
                 self.__expect_and_consume(TokenType.ID)
                 throw_unexpected_token_err(
@@ -221,6 +226,8 @@ class Parser(AComponent):
                 statement_node = self.parse_if()
             elif self.match(TokenType.PRINT):
                 statement_node = self.parse_print()
+            elif self.match(TokenType.PRINTLN):
+                statement_node = self.parse_print(print_ln=True)
             elif self.match(TokenType.INPUT):
                 statement_node = self.parse_input()
 
@@ -295,6 +302,78 @@ class Parser(AComponent):
         postfix_node.start_pos = start_pos
         postfix_node.end_pos = self.curr_tkn.pos
         return postfix_node
+
+    def parse_index(self):
+        """
+        Index: [ simple_expr ]
+        @return: SimpleExprNode
+        """
+        self.debug("<Index>")
+
+        self.__expect_and_consume(TokenType.LBRACKET)
+        simple_expr = self.parse_simple_expr()
+        self.__expect_and_consume(TokenType.RBRACKET)
+
+        self.debug("</Index>")
+        return simple_expr
+
+    def parse_array_def(self):
+        """
+        ArrayDef: ID => [ expr ] | { values* }
+        @return:
+        """
+        self.debug("<ArrDef>")
+
+        identifier = self.curr_tkn.value
+        size = None
+        values = []
+        self.__expect_and_consume(TokenType.ID)
+        self.__expect_and_consume(TokenType.TO)
+
+        if self.match(TokenType.LBRACKET):
+            self.__expect_and_consume(TokenType.LBRACKET)
+            size = self.parse_simple_expr()
+            self.__expect_and_consume(TokenType.RBRACKET)
+
+        elif self.match(TokenType.LBRACE):
+            self.__expect_and_consume(TokenType.LBRACE)
+            while not self.match(TokenType.RBRACE):
+                values.append(self.parse_expr())
+                if self.match(TokenType.COMMA):
+                    self.__expect_and_consume(TokenType.COMMA)
+            self.__expect_and_consume(TokenType.RBRACE)
+
+        self.debug("<ArrDef>")
+        return ArrayNode(label="array_def", identifier=identifier, size=size, initial_values=values)
+
+    def parse_array_access(self):
+        """
+        ArrayAccess: ID index
+        @return:
+        """
+        self.debug("<ArrayAccess>")
+
+        identifier = self.curr_tkn.value
+        self.__expect_and_consume(TokenType.ID)
+        index = self.parse_index()
+
+        self.debug("</ArrayAccess>")
+        return ArrayNode(label="array_access", identifier=identifier, index=index)
+
+    def parse_array_assignment(self):
+        """
+        ArrayAssignment: ID index ASSIGN expr
+        """
+        self.debug("<ArrayAssign>")
+
+        identifier = self.curr_tkn.value
+        self.__expect_and_consume(TokenType.ID)
+        index = self.parse_index()
+        self.__expect_and_consume(TokenType.ASSIGN)
+        expression = self.parse_expr()
+
+        self.debug("</ArrayAssign>")
+        return ArrayNode(label="array_update", identifier=identifier, index=index, value=expression)
 
     def parse_assignment(self):
         """
@@ -455,7 +534,7 @@ class Parser(AComponent):
         return_node.end_pos = self.curr_tkn.pos
         return return_node
 
-    def parse_print(self):
+    def parse_print(self, print_ln=False):
         """
         PrintStatement: PRINT args
         @return: PrintNode
@@ -464,9 +543,14 @@ class Parser(AComponent):
 
         start_pos = self.curr_tkn.pos
 
-        self.__expect_and_consume(TokenType.PRINT)
+        # PrintlnStatement: PRINTLN args
+        if self.curr_tkn.type == TokenType.PRINTLN:
+            self.__expect_and_consume(TokenType.PRINTLN)
+        else:
+            self.__expect_and_consume(TokenType.PRINT)
+
         args = self.parse_args()
-        print_node = PrintNode(args)
+        print_node = PrintNode(args, print_ln)
 
         self.debug("</Print>")
         print_node.start_pos = start_pos
@@ -685,11 +769,17 @@ class Parser(AComponent):
 
         if self.match(TokenType.ID):
 
-            # Check if it is a function call
             if self.peek_token().type == TokenType.LPAR:
                 factor_node = self.parse_func_call()
+
+            elif self.peek_token().type == TokenType.LBRACKET:
+                start_pos = self.curr_tkn.pos
+                array_access_node = self.parse_array_access()
+                array_access_node.start_pos = start_pos
+                array_access_node.end_pos = self.curr_tkn.pos
+                factor_node = FactorNode(array_access_node)
+
             else:
-                # Check if it is an identifier
                 factor_node = IdentifierNode(self.curr_tkn)
                 self.__expect_and_consume(TokenType.ID)
 

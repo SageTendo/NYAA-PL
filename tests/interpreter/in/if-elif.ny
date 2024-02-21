@@ -3,6 +3,6 @@ uWu_nyaa() => {
 
     nani (test) {
     } nandesuka (nai test) {
-        yomu(IIE)
+        yomu_ln(IIE)
     }
 }

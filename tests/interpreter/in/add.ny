@@ -1,2 +1,2 @@
 # Simple addition of numbers and prints the result
-uWu_nyaa() => yomu(1 purasu 1);
+uWu_nyaa() => yomu_ln(1 purasu 1);

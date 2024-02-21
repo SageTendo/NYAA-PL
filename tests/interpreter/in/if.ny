@@ -1,5 +1,5 @@
 uWu_nyaa() => {
      nani (HAI) {
-        yomu(HAI)
+        yomu_ln(HAI)
     }
 }

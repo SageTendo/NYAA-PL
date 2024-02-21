@@ -130,11 +130,10 @@ class TestNyaa(TestCase):
             out_file = os.path.join(output_dir, file.replace(".ny", ".out"))
 
             # Load expected output
-            with open(out_file, "r") as f:
-                expected = f.read().strip().replace(' ', '')
-
-            # Skip test if no expected output
-            if expected is None:
+            try:
+                with open(out_file, "r") as f:
+                    expected = f.read().strip().replace(' ', '')
+            except FileNotFoundError:
                 print(f"{WARNING}  [Skipped] No expected output found for {file}{ENDC}")
                 continue
 
@@ -152,7 +151,7 @@ class TestNyaa(TestCase):
             else:
                 expected_header = "EXPECTED OUTPUT:"
                 print(f"{WARNING}{expected_header}", f"-" * len(expected_header))
-                print(f"{expected}{ENDC}\n")
+                print(f"{expected}{ENDC}")
 
                 actual_header = "ACTUAL OUTPUT:"
                 print(f"{WARNING}{actual_header}", f"-" * len(actual_header))

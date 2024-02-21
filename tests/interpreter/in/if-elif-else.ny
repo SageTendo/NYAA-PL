@@ -2,8 +2,8 @@ uWu_nyaa() => {
     test wa "baka"
 
     nani (test == "nani")
-    { yomu("nani")}
+    { yomu_ln("nani")}
     nandesuka (test == "nandesuka")
-    { yomu("nandesuka") }
-    baka { yomu("baka") }
+    { yomu_ln("nandesuka") }
+    baka { yomu_ln("baka") }
 }

@@ -6,5 +6,5 @@ kawaii fib(x) => {
 }
 
 uWu_nyaa() => {
-    yomu(fib(20))
+    yomu_ln(fib(20))
 }

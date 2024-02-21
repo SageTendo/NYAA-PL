@@ -6,9 +6,9 @@ uWu_nyaa() => {
                 yamete
             }
 
-            yomu("Don't print inside nani")
+            yomu_ln("Don't print inside nani")
         }
 
-        yomu("Don't print inside daijoubu")
+        yomu_ln("Don't print inside daijoubu")
     }
 }
