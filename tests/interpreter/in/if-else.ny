@@ -1,8 +1,8 @@
 kawaii test(x, y) => {
     nani(x == y) {
-        yomu("Oui")
+        yomu_ln("Oui")
     } baka {
-        yomu("Non")
+        yomu_ln("Non")
     }
 }
 

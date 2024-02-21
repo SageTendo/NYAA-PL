@@ -19,7 +19,8 @@ class TokenType(Enum):
     WHILE = auto()  # while
     FOR = auto()
     INPUT = auto()  # ohayo
-    PRINT = auto()  # printu
+    PRINT = auto()  # yomu
+    PRINTLN = auto()  # yomu_ln
     TRUE = auto()  # HAI
     FALSE = auto()  # IIE
 
@@ -40,6 +41,8 @@ class TokenType(Enum):
     SEMICOLON = auto()  # ;
     LBRACE = auto()  # {
     RBRACE = auto()  # }
+    LBRACKET = auto()  # [
+    RBRACKET = auto()  # ]
     COMMA = auto()  # ,
     # PERIOD = auto()  # .
     DCOLON = auto()  # ::
@@ -73,7 +76,7 @@ class TokenType(Enum):
         return token.type in [
             TokenType.RET, TokenType.ID, TokenType.WHILE,
             TokenType.FOR, TokenType.IF, TokenType.PRINT,
-            TokenType.INPUT
+            TokenType.INPUT, TokenType.PRINTLN
         ]
 
     @classmethod
@@ -135,8 +138,12 @@ class TokenType(Enum):
     @classmethod
     def callable(cls, token):
         return token.type in [
-            TokenType.ID, TokenType.PRINT, TokenType.INPUT
+            TokenType.ID, TokenType.PRINT, TokenType.INPUT, TokenType.PRINTLN
         ]
+
+    @classmethod
+    def assignment(cls, token):
+        return token.type in [TokenType.ASSIGN, TokenType.LBRACKET]
 
     def __str__(self):
         return self.name

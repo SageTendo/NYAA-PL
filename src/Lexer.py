@@ -11,7 +11,8 @@ RESERVED_WORDS = {
     'kawaii': TokenType.DEF, 'HAI': TokenType.TRUE, 'IIE': TokenType.FALSE,
     'wa': TokenType.ASSIGN, "modoru": TokenType.RET, 'purasu': TokenType.PLUS,
     'mainasu': TokenType.MINUS, 'purodakuto': TokenType.MULTIPLY, 'supuritto': TokenType.DIVIDE,
-    'ando': TokenType.AND, 'matawa': TokenType.OR, 'nai': TokenType.NOT, 'for': TokenType.FOR
+    'ando': TokenType.AND, 'matawa': TokenType.OR, 'nai': TokenType.NOT, 'for': TokenType.FOR,
+    "yomu_ln": TokenType.PRINTLN
 }
 
 
@@ -119,6 +120,12 @@ class Lexer(AComponent):
                 elif self.char == '}':
                     token.type = TokenType.RBRACE
                     self.__next_char()
+                elif self.char == '[':
+                    token.type = TokenType.LBRACKET
+                    self.__next_char()
+                elif self.char == ']':
+                    token.type = TokenType.RBRACKET
+                    self.__next_char()
                 elif self.char == ':':
                     self.__next_char()
 
@@ -166,7 +173,12 @@ class Lexer(AComponent):
                         self.__next_char()
 
                 elif self.char == "#":
-                    self.__skip_comment()
+                    self.__next_char()
+                    if self.char == "#":
+                        self.__next_char()
+                        self.__skip_multiline_comment(count=2)
+                    else:
+                        self.__skip_comment()
                     token = self.get_token()
                 elif self.char == '<':
                     token.type = TokenType.LT
@@ -293,8 +305,8 @@ class Lexer(AComponent):
                     processed_string += '\\'
                 else:
                     raise LexerError("Invalid escape character", self.line_number, self.col_number)
-
-            processed_string += self.char
+            else:
+                processed_string += self.char
             self.__next_char()
 
         self.__next_char()
@@ -307,6 +319,15 @@ class Lexer(AComponent):
 
     def __skip_comment(self):
         while self.char != '\n':
+            self.__next_char()
+
+    def __skip_multiline_comment(self, count):
+        while True:
+            if count == 0:
+                break
+
+            if self.char == '#':
+                count -= 1
             self.__next_char()
 
     @property

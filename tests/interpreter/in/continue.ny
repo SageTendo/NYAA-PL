@@ -1,9 +1,11 @@
 uWu_nyaa() => {
-    for i => (1, 10) {
+    for i => (1, 11) {
         nani (i == 5) {
-            motto
+            nani (i == 5) {
+                motto
+            }
         }
 
-        yomu(i)
+        yomu_ln(i)
     }
 }
