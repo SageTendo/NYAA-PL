@@ -241,9 +241,9 @@ class Interpreter(AComponent):
         iterator_runtime_object = RunTimeObject(label="number", value=0, value_type="int")
         self.current_env.insert_variable(node.identifier.value, iterator_runtime_object)
 
-        # incrementer to determine inclusive range and direction of iteration
+        # incrementer to determine direction of iteration
         incrementer = 1 if range_start < range_end else -1
-        for i in range(range_start, range_end + incrementer, incrementer):
+        for i in range(range_start, range_end, incrementer):
             iterator_runtime_object.value = i
             if last_evaluated := self.__handle_conditional_execution(node.body):
                 return last_evaluated
@@ -258,8 +258,8 @@ class Interpreter(AComponent):
 
         identifier = node.identifier
         if node.size is not None:
-            array_size = node.size.accept(self).value
-            values = [RunTimeObject("null", value="null")] * array_size
+            array_size = self.__test_for_identifier(node.size.accept(self)).value
+            values = [RunTimeObject("null", value="null")] * int(array_size)
 
         elif node.initial_values is not None:
             array_size = len(node.initial_values)
@@ -302,7 +302,7 @@ class Interpreter(AComponent):
         if int(index) < 0 or int(index) >= len(array_symbol.values):
             raise InterpreterError(ErrorType.RUNTIME, "Array index out of bounds", node.start_pos, node.end_pos)
 
-        array_symbol.values[index] = value_runtime
+        array_symbol.values[index] = RunTimeObject(value_runtime.label, value_runtime.value, value_runtime.type)
 
     def visit_assignment(self, node: 'AssignmentNode'):
         """
@@ -311,8 +311,7 @@ class Interpreter(AComponent):
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
-        self.current_env.insert_variable(lhs.value,
-                                         RunTimeObject(label=rhs.label, value=rhs.value, value_type=rhs.type))
+        self.current_env.insert_variable(lhs.value, RunTimeObject(rhs.label, rhs.value, rhs.type))
 
     def visit_call(self, node: 'CallNode'):
         """
