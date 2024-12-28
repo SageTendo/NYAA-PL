@@ -67,7 +67,7 @@ class Interpreter:
         self.node_start_pos = (-1, -1)
         self.node_end_pos = (-1, -1)
 
-    def log(self, message: str):
+    def __log(self, message: str):
         if self.__verbose:
             print(message)
 
@@ -108,7 +108,7 @@ class Interpreter:
 
         self.__visitor_depth += 1
         method = f"visit_{node.label}"
-        self.log(warning_msg(f"Visiting {node.label}"))
+        self.__log(warning_msg(f"Visiting {node.label}"))
         visit_method = getattr(self, method, self.generic_visit)
 
         # Cache node visit
@@ -117,7 +117,7 @@ class Interpreter:
 
         # Visit (in the case of cache misses)
         if result := visit_method(node):
-            self.log(success_msg(f"Returned --> {node.label}: {result}"))
+            self.__log(success_msg(f"Returned --> {node.label}: {result}"))
 
         self.__visitor_depth -= 1
         return result
@@ -144,16 +144,17 @@ class Interpreter:
         @param node: The function definition node to visit
         """
         params = {}
-        if node.args is not None:
+        if node.args:
             for arg in node.args.accept(self):
-                if arg.value in params:
+                if arg.value not in params:
+                    params[arg.value] = arg.type
+                else:
                     raise InterpreterError(
                         ErrorType.RUNTIME,
                         f"Duplicate parameter {WARNING}'{arg.value}'",
                         node.args.start_pos,
                         node.args.end_pos,
                     )
-                params[arg.value] = arg.type
         self.current_env.insert_function(node.identifier, params, node.body)  # type: ignore
 
     def visit_body(self, node: "BodyNode"):
@@ -235,9 +236,8 @@ class Interpreter:
 
         for else_if_stmt in node.else_if_statements:
             condition = else_if_stmt.expr.accept(self)
-            if not condition.value:
-                continue
-            return self.__handle_conditional_execution(else_if_stmt.body)
+            if condition.value:
+                return self.__handle_conditional_execution(else_if_stmt.body)
 
         if node.else_body is not None:
             return self.__handle_conditional_execution(node.else_body)
@@ -396,7 +396,6 @@ class Interpreter:
         function_symbol = self.current_env.lookup_function(node.identifier)  # type: ignore
 
         if node.args is not None:
-
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
                 raise InterpreterError(
@@ -411,6 +410,7 @@ class Interpreter:
             # assing arg values to local variables
             for i, param in enumerate(function_symbol.params):
                 local_env.insert_variable(param, function_args[i])
+
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
@@ -578,14 +578,15 @@ class Interpreter:
         elif op == "/":
 
             if left.label == "number" and left.label == right.label:
-                if right.value == 0:
+                if right.value != 0:
+                    return RunTimeObject("number", left.value / right.value)
+                else:
                     raise InterpreterError(
                         ErrorType.RUNTIME,
                         "Division by zero is not kawaii, please don't do that.",
                         self.node_start_pos,
                         self.node_end_pos,
                     )
-                return RunTimeObject("number", left.value / right.value)
 
         elif op == "and":
             return RunTimeObject(right.label, left.value and right.value)
@@ -629,35 +630,32 @@ class Interpreter:
         left_factor = node.left.accept(self)
         left_factor = self.__test_for_identifier(left_factor)
 
-        if node.right is not None:  # Unary operation
-            right_factor = node.right.accept(self)
-            right_factor = self.__test_for_identifier(right_factor)
+        if not node.right:
+            return left_factor
 
-            if left_factor.value == "not":
-                if right_factor.label not in [
-                    "string",
-                    "number",
-                    "identifier",
-                    "boolean",
-                ]:
-                    throw_unary_type_err(
-                        left_factor.value,
-                        right_factor.value,
-                        self.node_start_pos,
-                        self.node_end_pos,
-                    )
+        right_factor = node.right.accept(self)
+        right_factor = self.__test_for_identifier(right_factor)
+        if left_factor.value == "not":
+            if right_factor.label in ["string", "number", "identifier", "boolean"]:
                 return RunTimeObject("boolean", not right_factor.value)
 
-            elif left_factor.value == "-":
-                try:
-                    return RunTimeObject("number", -right_factor.value)
-                except TypeError as e:
-                    raise InterpreterError(
-                        ErrorType.TYPE,
-                        e.args[0],
-                        self.node_start_pos,
-                        self.node_end_pos,
-                    )
+            # Invalid operation
+            throw_unary_type_err(
+                left_factor.value,
+                right_factor.value,
+                self.node_start_pos,
+                self.node_end_pos,
+            )
+        elif left_factor.value == "-":
+            try:
+                return RunTimeObject("number", -right_factor.value)
+            except TypeError as e:
+                raise InterpreterError(
+                    ErrorType.TYPE,
+                    e.args[0],
+                    self.node_start_pos,
+                    self.node_end_pos,
+                )
         return left_factor
 
     @staticmethod
