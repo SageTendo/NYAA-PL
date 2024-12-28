@@ -1,29 +1,28 @@
+from src.core.ASTNodes import BodyNode
+from src.core.RuntimeObject import RunTimeObject
+
+
 class Symbol:
-    def __init__(self, name, value):
+    """Represents a symbol held by the symbol table"""
+
+    def __init__(self, name: str):
+        """
+        Initializes a new symbol
+        @param name: The name of the symbol
+        @param value: The value of the symbol
+        """
         self.__symbol_name = name
-        self.__symbol_value = value
 
     @property
     def name(self):
-        """
-        @return: The name of the symbol
-        """
+        """Return the name of the symbol"""
         return self.__symbol_name
 
-    @property
-    def value(self):
-        """
-        @return: The value of the symbol
-        """
-        return self.__symbol_value
-
     def __hash__(self):
-        """
-        @return: The hash of the symbol
-        """
+        """Return the hash of the symbol"""
         return hash(self.__symbol_name)
 
-    def __eq__(self, other):
+    def __eq__(self, other: "Symbol") -> bool:
         """
         Checks if the symbol is equal to another symbol
         @param other: The other symbol to compare with
@@ -35,27 +34,58 @@ class Symbol:
 
 
 class VarSymbol(Symbol):
-    def __init__(self, name, value):
-        super().__init__(name, value)
+    """Represents a variable"""
+
+    def __init__(self, name: str, value: RunTimeObject):
+        """
+        Initializes a new variable symbol
+        @param name: The name of the variable
+        @param value: The value held by the variable (instance of RunTimeObject)
+        """
+        super().__init__(name)
+        self.__value = value
+
+    @property
+    def value(self) -> RunTimeObject:
+        """Return the value of the variable"""
+        return self.__value
 
 
 class FunctionSymbol(Symbol):
-    def __init__(self, name, params, body):
-        super().__init__(name, None)
+    """Represents a function"""
+
+    def __init__(self, name: str, params: dict, body: BodyNode):
+        """
+        Initializes a new function symbol
+        @param name: The name of the function
+        @param params: The parameters of the function
+        @param body: The body of the function
+        """
+        super().__init__(name)
         self.__params = params
         self.__body = body
 
     @property
-    def params(self):
+    def params(self) -> dict:
+        """Return the parameters of the function"""
         return self.__params
 
     @property
-    def body(self):
+    def body(self) -> BodyNode:
+        """Return the body of the function"""
         return self.__body
 
 
 class ArraySymbol(Symbol):
-    def __init__(self, name, size=None, values=None):
-        super().__init__(name, None)
+    """Represents an array"""
+
+    def __init__(self, name: str, size: int, values: list[RunTimeObject]):
+        """
+        Initializes a new array symbol
+        @param name: The name of the array
+        @param size: The size of the array
+        @param values: The values held by the array
+        """
+        super().__init__(name)
         self.values = values
         self.size = size

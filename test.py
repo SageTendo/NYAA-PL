@@ -17,21 +17,12 @@ class TestNyaa(TestCase):
     test_dir = os.path.dirname(__file__) + "/tests/"
 
     def setUp(self):
-        """
-        Set up the test environment
-        """
-        self.lexer = Lexer()
-        self.parser = Parser()
-        self.interpreter = Interpreter()
+        self.lexer: Lexer = Lexer()
+        self.parser: Parser = Parser(lexer=self.lexer)
+        self.interpreter: Interpreter = Interpreter()
         self.num_random_tests = 25000
 
     def tearDown(self):
-        """
-        Clean up the test environment
-        """
-        self.lexer = None
-        self.parser = None
-        self.Interpreter = None
         print("", flush=True)
 
     @staticmethod
@@ -42,11 +33,7 @@ class TestNyaa(TestCase):
         print(f"#" * len(header), flush=True)
 
     def test_lexer(self):
-        """
-        Test the lexer, testing for recognized tokens
-        """
         self.print_header("Lexer")
-
         test_dir = os.path.join(self.test_dir, "lexer/")
         for file in os.listdir(test_dir):
             try:
@@ -65,7 +52,6 @@ class TestNyaa(TestCase):
 
     def test_lexer_errors(self):
         self.print_header("Lexer Errors")
-
         test_dir = os.path.join(self.test_dir, "errors/lexer/")
         for file in os.listdir(test_dir):
             if not file.endswith(".lex"):
@@ -95,10 +81,9 @@ class TestNyaa(TestCase):
                 e = str(e).lower()
                 if expected not in e and len(expected) > 0:
                     print(f"{ERROR}  Failed{ENDC}", e, file=sys.stderr)
-                    self.fail(f"EXPECTED:\n"
-                              f"    {expected}\n"
-                              f"ACTUAL:\n"
-                              f"    {e}")
+                    self.fail(
+                        f"EXPECTED:\n" f"    {expected}\n" f"ACTUAL:\n" f"    {e}"
+                    )
 
                 print(f"{SUCCESS}  Passed{ENDC}")
             finally:
@@ -106,7 +91,6 @@ class TestNyaa(TestCase):
 
     def test_parser(self):
         self.print_header("Parser")
-
         test_dir = os.path.join(self.test_dir, "interpreter/in/")
         for file in os.listdir(test_dir):
             try:
@@ -120,7 +104,6 @@ class TestNyaa(TestCase):
 
     def test_interpreter(self):
         self.print_header("Interpreter")
-
         interpreter_dir = os.path.join(self.test_dir, "interpreter/")
         input_dir = os.path.join(interpreter_dir, "in/")
         output_dir = os.path.join(interpreter_dir, "out/")
@@ -132,20 +115,18 @@ class TestNyaa(TestCase):
             # Load expected output
             try:
                 with open(out_file, "r") as f:
-                    expected = f.read().strip().replace(' ', '')
+                    expected = f.read().strip().replace(" ", "")
             except FileNotFoundError:
                 print(f"{WARNING}  [Skipped] No expected output found for {file}{ENDC}")
                 continue
 
             print(f"[Interpreter] Running test on: {file}")
             proc = subprocess.run(
-                ["python3", "nyaa.py", input_dir + file],
-                capture_output=True,
-                text=True
+                ["python3", "nyaa.py", input_dir + file], capture_output=True, text=True
             )
 
             # Compare outputs
-            res = proc.stdout.strip().replace(' ', '')
+            res = proc.stdout.strip().replace(" ", "")
             if res == expected and proc.returncode == 0:
                 print(f"{SUCCESS}  Passed{ENDC}")
             else:
@@ -166,7 +147,6 @@ class TestNyaa(TestCase):
 
     def test_interpreter_errors(self):
         self.print_header("Interpreter Errors")
-
         test_dir = os.path.join(self.test_dir, "errors/interpreter/")
         for file in os.listdir(test_dir):
             if not file.endswith(".ny"):
@@ -184,9 +164,7 @@ class TestNyaa(TestCase):
 
             print(f"[Interpreter Error] Running test on: {file}")
             proc = subprocess.run(
-                ["python3", "nyaa.py", test_dir + file],
-                capture_output=True,
-                text=True
+                ["python3", "nyaa.py", test_dir + file], capture_output=True, text=True
             )
 
             # Compare outputs
@@ -194,18 +172,20 @@ class TestNyaa(TestCase):
             expected = expected.lower().strip()
             if expected not in result and len(expected) > 0:
                 print(f"{ERROR}  Failed{ENDC}")
-                self.fail(f"EXPECTED:\n"
-                          f"    {expected}\n"
-                          f"ACTUAL:\n"
-                          f"    {proc.stderr}")
+                self.fail(
+                    f"EXPECTED:\n" f"    {expected}\n" f"ACTUAL:\n" f"    {proc.stderr}"
+                )
 
             print(f"{SUCCESS}  Passed{ENDC}")
 
     def test_operator_precedence_expressions(self):
         self.print_header("Operator Precedence Expressions")
-
-        operators = [('purasu', '+'), ('mainasu', '-'),
-                     ('purodakuto', '*'), ('supuritto', '/')]
+        operators = [
+            ("purasu", "+"),
+            ("mainasu", "-"),
+            ("purodakuto", "*"),
+            ("supuritto", "/"),
+        ]
 
         start = -sys.maxsize - 1
         end = sys.maxsize
@@ -224,8 +204,12 @@ class TestNyaa(TestCase):
             op3 = choice(operators)
 
             # Generate expressions
-            repl_input = f"{a} {op1[0]} {b} {op2[0]} {c} {op3[0]} {d} {op1[0]} {e} {op2[0]} {f}"
-            eval_input = f"{a} {op1[1]} {b} {op2[1]} {c} {op3[1]} {d} {op1[1]} {e} {op2[1]} {f}"
+            repl_input = (
+                f"{a} {op1[0]} {b} {op2[0]} {c} {op3[0]} {d} {op1[0]} {e} {op2[0]} {f}"
+            )
+            eval_input = (
+                f"{a} {op1[1]} {b} {op2[1]} {c} {op3[1]} {d} {op1[1]} {e} {op2[1]} {f}"
+            )
             try:
                 expected = eval(eval_input)
                 ast = self.parser.parse_source(repl_input=repl_input)
@@ -233,10 +217,12 @@ class TestNyaa(TestCase):
 
                 if result.value != expected:
                     print(f"{ERROR}   Failed{ENDC}")
-                    self.fail(f"EXPRESSION:\n"
-                              f"    {eval_input}\n"
-                              f"EXPECTED RESULT= {expected}\n"
-                              f"ACTUAL RESULT=  {result.value}\n")
+                    self.fail(
+                        f"EXPRESSION:\n"
+                        f"    {eval_input}\n"
+                        f"EXPECTED RESULT= {expected}\n"
+                        f"ACTUAL RESULT=  {result.value}\n"
+                    )
             except ZeroDivisionError:
                 continue
             except Exception as e:
@@ -247,10 +233,14 @@ class TestNyaa(TestCase):
 
     def test_prioritized_expressions(self):
         self.print_header("Prioritized Expressions")
-
-        operators = [('purasu', '+'), ('mainasu', '-'),
-                     ('purodakuto', '*'), ('supuritto', '/'),
-                     ('ando', 'and'), ('matawa', 'or')]
+        operators = [
+            ("purasu", "+"),
+            ("mainasu", "-"),
+            ("purodakuto", "*"),
+            ("supuritto", "/"),
+            ("ando", "and"),
+            ("matawa", "or"),
+        ]
 
         start = -sys.maxsize - 1
         end = sys.maxsize
@@ -277,10 +267,12 @@ class TestNyaa(TestCase):
 
                 if result.value != expected:
                     print(f"{WARNING}  Failed{ENDC}")
-                    self.fail(f"EXPRESSION:\n"
-                              f"    {eval_input}\n"
-                              f"EXPECTED RESULT= {expected}\n"
-                              f"ACTUAL RESULT=  {result.value}\n")
+                    self.fail(
+                        f"EXPRESSION:\n"
+                        f"    {eval_input}\n"
+                        f"EXPECTED RESULT= {expected}\n"
+                        f"ACTUAL RESULT=  {result.value}\n"
+                    )
             except ZeroDivisionError:
                 continue
             except Exception as e:
@@ -289,6 +281,28 @@ class TestNyaa(TestCase):
 
         print(f"{SUCCESS}  Passed{ENDC}")
 
+    def test_repl(self):
+        self.print_header("REPL")
+        try:
+            proc = subprocess.run(
+                ["python3", "nyaa.py"], capture_output=True, text=True, input="jaa ne"
+            )
 
-if __name__ == '__main__':
+            if proc.returncode != 0:
+                print(f"{ERROR}  Failed{ENDC}")
+                self.fail(
+                    f"EXPECTED:\n"
+                    f"    {proc.stderr}\n"
+                    f"ACTUAL:\n"
+                    f"    {proc.stdout}"
+                )
+
+            print(f"{SUCCESS}  Passed{ENDC}")
+        except Exception as e:
+            print(f"{ERROR}  Failed{ENDC}")
+            print(e, file=sys.stderr)
+            self.fail()
+
+
+if __name__ == "__main__":
     unittest.main()

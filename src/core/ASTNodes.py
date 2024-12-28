@@ -4,15 +4,14 @@ from src.core.CacheMemory import cache_mem
 
 
 class Node:
-    def __init__(self, node_label):
+    def __init__(self, node_label: str):
         self.label = node_label
-        self.start_pos = None
-        self.end_pos = None
+        self.start_pos: tuple = (-1, -1)
+        self.end_pos: tuple = (-1, -1)
 
     def accept(self, visitor):
-        # Check cache for node visiter
-        if method := cache_mem.get(self):
-            return method(self)
+        if cached_visit := cache_mem.get(self):
+            return cached_visit(self)
         return visitor.visit(self)
 
     def to_json(self):
@@ -61,7 +60,7 @@ class ProgramNode(Node):
         super().__init__("program")
 
         self.functions = []
-        self.body = None
+        self.body: BodyNode
         self.eof = False
 
     def set_eof(self):
@@ -188,32 +187,56 @@ class ExprNode(Node):
     def __init__(self):
         super().__init__("expr")
 
-        self.left = None
-        self.right = None
-        self.op = None
+        self._left = None
+        self._right = None
+        self._operator = None
+
+    @property
+    def left(self):
+        return self._left
+
+    @left.setter
+    def left(self, value):
+        self._left = value
+
+    @property
+    def right(self):
+        return self._right
+
+    @right.setter
+    def right(self, value):
+        self._right = value
+
+    @property
+    def operator(self):
+        return self._operator
+
+    @operator.setter
+    def operator(self, value):
+        self._operator = value
 
 
 class PostfixExprNode(Node):
     def __init__(self, left, op=None):
-        super().__init__('postfix_expr')
+        super().__init__("postfix_expr")
         self.left = left
-        self.op = op
+        self.operator = op
 
 
 class SimpleExprNode(Node):
     def __init__(self, left, right=None, op=None):
-        super().__init__('simple_expr')
+        super().__init__("simple_expr")
         self.left = left
         self.right = right
-        self.op = op
+        self.operator = op
 
 
 class TermNode(Node):
     def __init__(self, left, right=None, op=None):
-        super().__init__('term')
+        super().__init__("term")
         self.left = left
         self.right = right
-        self.op = op
+        self.operator = op
 
 
 class FactorNode(Node):
@@ -224,7 +247,15 @@ class FactorNode(Node):
 
 
 class ArrayNode(Node):
-    def __init__(self, label, identifier, index=None, size=None, value=None, initial_values=None):
+    def __init__(
+        self,
+        label,
+        identifier,
+        index=None,
+        size=None,
+        value=None,
+        initial_values=None,
+    ):
         super().__init__(label)
         self.identifier = identifier
         self.index = index
@@ -247,10 +278,7 @@ class NumericLiteralNode(Node):
         self.value = token.value
 
     def to_json(self):
-        return {
-            "type": str(self.type),
-            "value": str(self.value)
-        }
+        return {"type": str(self.type), "value": str(self.value)}
 
 
 class StringLiteralNode(Node):
@@ -265,9 +293,7 @@ class BooleanNode(Node):
         self.value = boolean_value
 
     def to_json(self):
-        return {
-            "value": str(self.value)
-        }
+        return {"value": str(self.value)}
 
 
 class OperatorNode(Node):

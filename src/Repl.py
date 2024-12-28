@@ -14,17 +14,19 @@ class Repl:
         # Shell confiurations
         readline.set_auto_history(False)
         readline.set_history_length(1000)
-        readline.parse_and_bind('set blink-matching-paren on')
+        readline.parse_and_bind("set blink-matching-paren on")
 
-    def run(self, dflags=None):
-        print(f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
-              f"Welcome to the NYAA REPL! Type 'jaa ne' to exit. (｡♥‿♥｡)\n{ENDC}")
+    def run(self):
+        print(
+            f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
+            f"Welcome to the NYAA REPL! Type 'jaa ne' to exit. (｡♥‿♥｡)\n{ENDC}"
+        )
 
         while True:
             line = self.handle_input()
             if not line:
                 continue
-            self.execute(line, dflags)
+            self.execute(line)
 
     @staticmethod
     def handle_input():
@@ -38,23 +40,23 @@ class Repl:
             exit(0)
 
         # Handle multiline input
-        if line.endswith('{'):
+        if line.endswith("{"):
             next_line = str(input())
 
-            while not next_line.endswith('}'):
+            while not next_line.endswith("}"):
                 line += next_line
                 next_line = str(input())
             line += next_line
         return line if len(line) > 0 else None
 
-    def execute(self, line, dflags):
+    def execute(self, line):
         try:
-            AST = self.parser.parse_source(repl_input=line, dflags=dflags)
+            AST = self.parser.parse_source(repl_input=line)
             res = self.interpreter.interpret(AST)
 
             # Add successful commands to history
             readline.add_history(line)
-            if not res or res.label == 'null':
+            if not res or res.label == "null":
                 print()
                 return
 
@@ -65,4 +67,4 @@ class Repl:
             elif isinstance(res, RunTimeObject):
                 print(res.value, "\n")
         except Exception as e:
-            print(e.with_traceback(None), '\n', file=sys.stderr)
+            print(e.with_traceback(None), "\n", file=sys.stderr)
