@@ -2,7 +2,11 @@ from collections import OrderedDict
 
 
 class LRUCache:
-    def __init__(self, capacity=1000):
+    def __init__(self, capacity: int = 1000):
+        """
+        Initialize the cache memory
+        @param capacity: The maximum number of items the cache can hold
+        """
         self.__capacity = capacity
         self.__cache_map = OrderedDict()
 
@@ -13,7 +17,6 @@ class LRUCache:
         @return: The value associated with the provided key
         """
         if key in self.__cache_map:
-            # Move to end (Most recently used)
             self.__cache_map.move_to_end(key)
             return self.__cache_map[key]
         return None

@@ -14,30 +14,38 @@ class ErrorType(Enum):
 class LexerError(Exception):
 
     def __init__(self, message: str, line_number: int, col_number: int):
-        self.message = (f"{WARNING}{emoji()}\n"
-                        f"Lexical Error (字句エラー): "
-                        f"{ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}")
+        self.message = (
+            f"{WARNING}{emoji()}\n"
+            f"Lexical Error (字句エラー): "
+            f"{ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}"
+        )
         super().__init__(self.message)
 
 
 class ParserError(Exception):
 
     def __init__(self, message: str, line_number: int, col_number: int):
-        self.message = (f"{WARNING}{emoji()}\n"
-                        f"Syntax Error (構文エラー): {ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}")
+        self.message = (
+            f"{WARNING}{emoji()}\n"
+            f"Syntax Error (構文エラー): {ERROR}{message} at position {WARNING}{line_number}:{col_number}{ENDC}"
+        )
         super().__init__(self.message)
 
 
 class InterpreterError(Exception):
 
-    def __init__(self, err_tpye: ErrorType, message: str, start_pos: tuple, end_pos: tuple):
+    def __init__(
+        self, err_tpye: ErrorType, message: str, start_pos: tuple, end_pos: tuple
+    ):
         start_line_number, start_col_number = start_pos
         end_line_number, end_col_number = end_pos
 
-        self.message = (f"{WARNING}{emoji()}\n"
-                        f"{err_tpye.value}: {ERROR}{message}{ERROR} "
-                        f"at position {WARNING}{start_line_number}:{start_col_number} "
-                        f"to {end_line_number}:{end_col_number}{ENDC}")
+        self.message = (
+            f"{WARNING}{emoji()}\n"
+            f"{err_tpye.value}: {ERROR}{message}{ERROR} "
+            f"at position {WARNING}{start_line_number}:{start_col_number} "
+            f"to {end_line_number}:{end_col_number}{ENDC}"
+        )
         super().__init__(self.message)
 
 
@@ -51,9 +59,12 @@ def throw_unexpected_token_err(token_type, expected_type, line_number, col_numbe
     @param line_number  : The line number of the unexpected token
     @param col_number   : The column number of the unexpected token
     """
-    raise ParserError(f"Unexpected token {WARNING}'{token_type}'\n"
-                      f"Expected {SUCCESS}{expected_type}{ERROR}",
-                      line_number, col_number)
+    raise ParserError(
+        f"Unexpected token {WARNING}'{token_type}'\n"
+        f"Expected {SUCCESS}{expected_type}{ERROR}",
+        line_number,
+        col_number,
+    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -67,8 +78,12 @@ def throw_invalid_operation_err(lhs, op, rhs, start_pos, end_pos):
     @param start_pos: The starting position of the expression
     @param end_pos: The ending position of the expression
     """
-    raise InterpreterError(ErrorType.TYPE, f"Invalid operation {WARNING}'{lhs} {op} {rhs}'",
-                           start_pos, end_pos)
+    raise InterpreterError(
+        ErrorType.TYPE,
+        f"Invalid operation {WARNING}'{lhs} {op} {rhs}'",
+        start_pos,
+        end_pos,
+    )
 
 
 def throw_unary_type_err(operator, operand_label, start_pos, end_pos):
@@ -79,19 +94,22 @@ def throw_unary_type_err(operator, operand_label, start_pos, end_pos):
     @param start_pos: The starting position of the expression
     @param end_pos: The ending position of the expression
     """
-    raise InterpreterError(ErrorType.RUNTIME,
-                           f"Can't apply unary operator "
-                           f"{WARNING}'{operator}'{ERROR} on a {WARNING}'{operand_label}'",
-                           start_pos, end_pos)
+    raise InterpreterError(
+        ErrorType.RUNTIME,
+        f"Can't apply unary operator "
+        f"{WARNING}'{operator}'{ERROR} on a {WARNING}'{operand_label}'",
+        start_pos,
+        end_pos,
+    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Basic Errors
 def warning_msg(msg):
     """
-        Displays warning to console
-        @param msg:
-        """
+    Displays warning to console
+    @param msg:
+    """
     return f"{WARNING}{msg}{ENDC}"
 
 
@@ -117,7 +135,6 @@ def emoji():
         "(∩︵∩)",
         "(◡﹏◡✿)",
         "(✿◠‿◠)",
-
         # Mad Kawaii Emojis
         "ಠ_ಠ",
         "(¬_¬)",
