@@ -39,7 +39,7 @@ class RunTimeObject:
 
     def __repr__(self):
         """Returns a string representation of the runtime object"""
-        if self.__type is None:
+        if not self.__type:
             return f"RuntimeObject({self.__label}) = {self.value}"
         return f"RuntimeObject({self.__label} | {self.__type}) = {self.__value}"
 

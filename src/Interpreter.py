@@ -98,7 +98,7 @@ class Interpreter:
                 "Time to retreat before you're lost in the wild recursion! (¬‿¬)"
             )
 
-        if self.current_env is None:
+        if not self.current_env:
             raise InterpreterError(
                 ErrorType.RUNTIME,
                 "Undefined scope. Please define a scope before executing statements",
@@ -123,11 +123,7 @@ class Interpreter:
         return result
 
     def visit_program(self, node: ProgramNode):
-        """
-        Interprets a program node and returns the result of the program execution
-        @param node: The program node to visit
-        @return: The result of the program execution
-        """
+        """Interprets a program node by visiting its functions and body"""
         if node.eof:
             return
 
@@ -139,9 +135,8 @@ class Interpreter:
 
     def visit_func_def(self, node: "FuncDefNode"):
         """
-        Interprets a function definition node and add the function
-        and its properties to the symbol table
-        @param node: The function definition node to visit
+        Interprets a function definition node by adding the function
+        and its properties to the symbol table of the current environment/scope
         """
         params = {}
         if node.args:
@@ -159,10 +154,8 @@ class Interpreter:
 
     def visit_body(self, node: "BodyNode"):
         """
-        Visits a body node and interprets the statements in the body
+        Interprets a body node, executes its statements,
         and returns the result of the last evaluated statement
-        @param node: The body node to visit
-        @return: The result of the last evaluated statement
         """
         last_evaluated_stmt = None
         for stmt in node.statements:
@@ -188,21 +181,20 @@ class Interpreter:
 
     def visit_return(self, node: "ReturnNode"):
         """
-        Interprets a return node and returns the result of the expression if any
-        @param node: The return node to visit
-        @return: The result of the expression if any
+        Interprets a return statement node and
+        returns the result of the evaluated expression if any
         """
         if node.expr is not None:
             return node.expr.accept(self)
 
     def visit_break(self, node: "BreakNode"):
-        """Interprets a break node"""
+        """Interprets a break statement node"""
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
         self.break_flag = True
 
     def visit_continue(self, node: "ContinueNode"):
-        """Interprets a continue node"""
+        """Interprets a continue statement node"""
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
         self.continue_flag = True
@@ -210,11 +202,9 @@ class Interpreter:
     def __handle_conditional_execution(self, body_node: "BodyNode"):
         """
         Handles the execution of a conditional body node
-        and returns the result of the last evaluated statement if any
-        @param body_node: The body node to visit
-        @return: The result of the last evaluated statement if anything is returned
+        and returns the result of the last evaluated statement (if any)
         """
-        if body_node is None:
+        if not body_node:
             return
 
         last_evaluated_stmt = body_node.accept(self)
@@ -225,10 +215,8 @@ class Interpreter:
 
     def visit_if(self, node: "IfNode"):
         """
-        Visits an if node and interprets its body if the specified condition is true,
-        and returns the result of the last evaluated statement if any
-        @param node: The if statement node to visit
-        @return: The result of the last evaluated statement if any
+        Visits an if node and interprets its body if the condition is met,
+        and returns the result of the last evaluated statement (if any)
         """
         condition = node.expr.accept(self)
         if condition.value:
@@ -239,15 +227,13 @@ class Interpreter:
             if condition.value:
                 return self.__handle_conditional_execution(else_if_stmt.body)
 
-        if node.else_body is not None:
+        if node.else_body:
             return self.__handle_conditional_execution(node.else_body)
 
     def visit_while(self, node: "WhileNode"):
         """
-        Visits a while node and interprets its body while the condition is true,
-        and returns the result of the last evaluated statement if any
-        @param node: The while statement node to visit
-        @return: The result of the last evaluated statement if any
+        Visits a while loop and interprets its body while the condition is met,
+        and returns the result of the last evaluated statement (if any)
         """
         condition = node.expr.accept(self)
         while condition.value:
@@ -262,21 +248,19 @@ class Interpreter:
 
     def visit_for(self, node: "ForNode"):
         """
-        Visits a for loop and creates an iterator in the symbol table and interprets its body for the specified range
-        @param node: The for loop node to visit
-        @return: The result of the last evaluated statement if any
+        Visits a for loop and interprets its body while the condition is met,
+        and returns the result of the last evaluated statement (if any)
         @raise InterpreterError: If the range value is not an integer
         """
 
         def validate_range_node(range_node):
             """
-            Validate a range node.
-            @param range_node: The range node to validate.
+            Validates the range value of a range node
             @return int: The validated range value.
             @raise InterpreterError: If the range value is not an integer.
             """
             runtime_object = range_node.accept(self)
-            if type(runtime_object.value) is not int:
+            if not isinstance(runtime_object.value, int):
                 raise InterpreterError(
                     ErrorType.RUNTIME,
                     f"Range value '{type(runtime_object.value).__name__}' "
@@ -303,19 +287,16 @@ class Interpreter:
                 return last_evaluated
 
     def visit_array_def(self, node: "ArrayNode"):
-        """
-        Visits an ArrayNode and creates a new array in the symbol table
-        @param node: The ArrayNode to visit
-        """
+        """Visits an ArrayNode and creates a new array in the symbol table"""
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
 
         identifier = node.identifier
-        if node.size is not None:
+        if node.size:
             array_size = self.__test_for_identifier(node.size.accept(self)).value
             values = [RunTimeObject("null", value="null")] * int(array_size)
 
-        elif node.initial_values is not None:
+        elif node.initial_values:
             array_size = len(node.initial_values)
             values = [value.accept(self) for value in node.initial_values]
 
@@ -328,8 +309,8 @@ class Interpreter:
 
     def visit_array_access(self, node: "ArrayNode"):
         """
-        Visits an ArrayNode and returns an element of the array in the symbol table
-        @param node: The ArrayNode to visit
+        Interprets an array access by visiting the array node
+        and returning the value at the specified index
         """
         identifier = node.identifier
         index = self.__test_for_identifier(node.index.accept(self)).value
@@ -347,8 +328,8 @@ class Interpreter:
 
     def visit_array_update(self, node: "ArrayNode"):
         """
-        Visits an ArrayNode and updates the array in the symbol table
-        @param node: The ArrayNode to visit
+        Interprets an array update by visiting the array node
+        and updating the value at the specified index
         """
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
@@ -372,8 +353,8 @@ class Interpreter:
 
     def visit_assignment(self, node: "AssignmentNode"):
         """
-        Visits an assignment statement and handles the assignment operation of identifiers
-        @param node: The assignment node to visit
+        Interprets a variable assignment by visiting the left and right nodes
+        and assigning the value of the right node to the identifier in the left node
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
@@ -381,9 +362,8 @@ class Interpreter:
 
     def visit_call(self, node: "CallNode"):
         """
-        Visits a function CallNode, fetches the function symbol from the symbol table,
-        creates a new environment for the function call and handles its execution.
-        @param node: The CallNode being visited
+        Interprets a functional call, executes the function associated with the call node
+        and returns the result of the function call
         """
         self.check_for_stack_overflow(node)
 
@@ -395,7 +375,7 @@ class Interpreter:
         old_env = self.current_env
         function_symbol = self.current_env.lookup_function(node.identifier)  # type: ignore
 
-        if node.args is not None:
+        if node.args:
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
                 raise InterpreterError(
@@ -426,19 +406,12 @@ class Interpreter:
 
     @staticmethod
     def visit_input(node: "InputNode"):
-        """
-        Gets input from the user and returns it when an input node is visited
-        @param node: The input node being visited
-        @return: The value inputted by the user
-        """
+        """Interprets input from the user and returns it when an input node is visited"""
         value = input(node.message)
         return RunTimeObject("string", value)
 
     def visit_print(self, node: "PrintNode"):
-        """
-        Visits a print statement node and prints the value(s) of evaluated argument(s) to the console
-        @param node: The print statement node to visit
-        """
+        """Interprets a print statement to the console"""
         args = node.args.accept(self)
         for i, arg in enumerate(args):
             runtime_value = arg.value
@@ -447,66 +420,45 @@ class Interpreter:
             else:
                 print(runtime_value, end="")
 
-        if node.println:  # print new line if println is used
+        if node.println:
             print()
 
     def visit_postfix_expr(self, node: "PostfixExprNode"):
-        """
-        Visits a postfix expression node and returns the result of the expression evaluated
-        @param node: The postfix expression node to visit
-        @return: The result of the postfix expression
-        """
+        """Interprets a postfix expression and returns the result of the operation"""
         lhs = node.left.accept(self)
-
         runtime_object = self.__test_for_identifier(lhs)
         runtime_object.value += 1 if node.operator == "++" else -1
         return RunTimeObject("number", runtime_object.value)
 
     def visit_args(self, node: "ArgsNode"):
         """
-        Visits the arguments node and returns the a list of values
-        associated with the evaluated arguments
-        @param node: The arguments node to visit
-        @return:  List of argument values evaluated
+        Interprets the arguments of a function call and returns a list of runtime objects
+        representing the arguments passed to the function call
         """
         return [arg_node.accept(self) for arg_node in node.children]
 
     def visit_expr(self, node: "ExprNode"):
-        """
-        Visits an expression node and returns the result of the evaluated expression
-        @param node: The expression node to visit
-        @return: The result of the expression evaluated
-        """
+        """Interprets an expression and returns the result of the evaluated expression"""
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
         return self.handle_expressions(node)
 
     def visit_simple_expr(self, node: "SimpleExprNode"):
-        """
-        Visits a simple expression node and returns the result of the evaluated expression
-        @param node: The simple expression node to visit
-        @return: The result of the expression evaluated
-        """
+        """Interprets a simple expression and returns the result of the evaluated expression"""
         return self.handle_expressions(node)
 
     def visit_term(self, node: "TermNode"):
-        """
-        Visits a term node and returns the result of the evaluated expression
-        @param node: The term node to visit
-        @return: The result of the expression evaluated
-        """
+        """Interprets a term expression and returns the result of the evaluated expression"""
         return self.handle_expressions(node)
 
     def handle_expressions(self, node):
         """
         Handles expressions and returns a runtime object representing the result of the operation
-        @param node: The expression node to handle
-        @return: A RunTimeObject representing the result of the operation
         """
         left = node.left.accept(self)
         left = self.__test_for_identifier(left)
 
-        if node.operator is not None:
+        if node.operator:
             right = node.right.accept(self)
             right = self.__test_for_identifier(right)
 
@@ -622,11 +574,7 @@ class Interpreter:
         )
 
     def visit_factor(self, node: "FactorNode"):
-        """
-        Visits a FactorNode and returns the result of the operation as a runtime object
-        @param node: The FactorNode being visited
-        @return: A RunTimeObject representing the result the evaluated factor
-        """
+        """Visits a FactorNode and returns the value as a runtime object"""
         left_factor = node.left.accept(self)
         left_factor = self.__test_for_identifier(left_factor)
 
@@ -660,66 +608,33 @@ class Interpreter:
 
     @staticmethod
     def visit_operator(node: "OperatorNode"):
-        """
-        Visits an OperatorNode and returns the value as a runtime object
-        @param node: The OperatorNode being visited
-        @return: A RunTimeObject representing the value of the operator
-        """
         return RunTimeObject("operator", node.value)
 
     @staticmethod
     def visit_identifier(node: "IdentifierNode"):
-        """
-        Visits an IdentifierNode and returns the name of the identifier as a runtime object
-        @param node: The IdentifierNode being visited
-        @return: A RunTimeObject representing the name of the identifier
-        """
         return RunTimeObject("identifier", node.value)
 
     @staticmethod
     def visit_numeric_literal(node: "NumericLiteralNode"):
-        """
-        Visits a NumericLiteralNode and returns a runtime object representing a number.
-        @param node: The NumericLiteralNode being visited
-        @return: A RunTimeObject representing a number with the specified value
-        """
         return RunTimeObject("number", node.value)
 
     @staticmethod
     def visit_string_literal(node: "StringLiteralNode"):
-        """
-        Visits a StringLiteralNode and returns a runtime object representing a string.
-        @param node: The StringLiteralNode being visited
-        @return: A RunTimeObject representing a string with the specified value
-        """
         return RunTimeObject("string", node.value)
 
     @staticmethod
     def visit_boolean_literal(node: "BooleanNode"):
-        """
-        Visits a BooleanNode and returns a runtime object representing a boolean value.
-        @param node: The BooleanNode being visited
-        @return: A RunTimeObject representing a boolean with the specified value
-        """
         return RunTimeObject("boolean", node.value)
 
     @staticmethod
     def generic_visit(node):
-        """
-        Called if no visitor function exists for the specified node.
-        @param node: The node attempting to be visited
-        """
+        """Called if no visitor function exists for the specified node."""
         raise NotImplementedError(f"No visit_{node.label} method defined")
 
     def __test_for_identifier(
         self, runtime_object: "RunTimeObject", current_scope=False
     ):
-        """
-        Checks if the runtime object is an identifier, and returns
-        the value held by the identifier
-        @param runtime_object: The runtime object to test
-        @return: The non-identifier runtime object
-        """
+        """Checks if the runtime object is an identifier, and returns its value"""
         if runtime_object.label == "identifier":
             return self.current_env.lookup_variable(runtime_object.value, lookup_within_scope=current_scope)  # type: ignore
         else:
@@ -728,7 +643,6 @@ class Interpreter:
     def check_for_stack_overflow(self, node):
         """
         Checks if the recursion depth is exceeded.
-        @param node: The current node being visited
         @raise InterpreterError: If the recursion depth is exceeded
         """
         if self.__recursion_count > INTERNAL_RECURSION_LIMIT:
