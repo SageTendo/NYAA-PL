@@ -1,4 +1,8 @@
+from ctypes import Union
+import re
 import sys
+from typing import Optional
+
 
 from src.core.ASTNodes import (
     PrintNode,
@@ -71,11 +75,10 @@ class Interpreter:
         if self.__verbose:
             print(message)
 
-    def interpret(self, ast):
+    def interpret(self, ast: ProgramNode):
         """
-        Interprets the given abstract syntax tree
-        @param ast: The abstract syntax tree to interpret
-        @return: The last runtime object returned by the program
+        Interprets the given abstract syntax tree by visiting the root node
+        and returning the result of the interpretation
         """
         try:
             return ast.accept(self)
@@ -86,9 +89,8 @@ class Interpreter:
 
     def visit(self, node):
         """
-        Gets the name of the visitor method and calls it on the node passed in as an argument
-        @param node: The node to visit
-        @return: The result of the visitor method
+        Visits a node and interprets it by calling the appropriate visit method
+        and returning the result of the visit
         """
         if self.__visitor_depth >= MAX_VISIT_DEPTH:
             # visitor depth exceeded and an error should be thrown
@@ -256,7 +258,6 @@ class Interpreter:
         def validate_range_node(range_node):
             """
             Validates the range value of a range node
-            @return int: The validated range value.
             @raise InterpreterError: If the range value is not an integer.
             """
             runtime_object = range_node.accept(self)
@@ -423,35 +424,35 @@ class Interpreter:
         if node.println:
             print()
 
-    def visit_postfix_expr(self, node: "PostfixExprNode"):
+    def visit_postfix_expr(self, node: "PostfixExprNode") -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""
         lhs = node.left.accept(self)
         runtime_object = self.__test_for_identifier(lhs)
         runtime_object.value += 1 if node.operator == "++" else -1
         return RunTimeObject("number", runtime_object.value)
 
-    def visit_args(self, node: "ArgsNode"):
+    def visit_args(self, node: "ArgsNode") -> list[RunTimeObject]:
         """
         Interprets the arguments of a function call and returns a list of runtime objects
         representing the arguments passed to the function call
         """
         return [arg_node.accept(self) for arg_node in node.children]
 
-    def visit_expr(self, node: "ExprNode"):
+    def visit_expr(self, node: "ExprNode") -> RunTimeObject:
         """Interprets an expression and returns the result of the evaluated expression"""
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
         return self.handle_expressions(node)
 
-    def visit_simple_expr(self, node: "SimpleExprNode"):
+    def visit_simple_expr(self, node: "SimpleExprNode") -> RunTimeObject:
         """Interprets a simple expression and returns the result of the evaluated expression"""
         return self.handle_expressions(node)
 
-    def visit_term(self, node: "TermNode"):
+    def visit_term(self, node: "TermNode") -> RunTimeObject:
         """Interprets a term expression and returns the result of the evaluated expression"""
         return self.handle_expressions(node)
 
-    def handle_expressions(self, node):
+    def handle_expressions(self, node) -> RunTimeObject:
         """
         Handles expressions and returns a runtime object representing the result of the operation
         """
@@ -473,7 +474,7 @@ class Interpreter:
                 return self.handle_relational_expressions(left, right, node.operator)
 
             # Invalid operation
-            throw_invalid_operation_err(
+            return throw_invalid_operation_err(
                 left.label,
                 node.operator,
                 right.label,
@@ -482,7 +483,7 @@ class Interpreter:
             )
         return left
 
-    def handle_additive_expressions(self, left, right, op):
+    def handle_additive_expressions(self, left, right, op) -> RunTimeObject:
         """
         Handles additive expressions and returns the result of the operation
         @param left: The left operand of the expression
@@ -505,11 +506,11 @@ class Interpreter:
             return RunTimeObject(left.label, left.value or right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(
+        return throw_invalid_operation_err(
             left.label, op, right.label, self.node_start_pos, self.node_end_pos
         )
 
-    def handle_multiplicative_expressions(self, left, right, op):
+    def handle_multiplicative_expressions(self, left, right, op) -> RunTimeObject:
         """
         Handles multiplicative expressions and returns the result of the operation
         as a runtime object
@@ -544,11 +545,11 @@ class Interpreter:
             return RunTimeObject(right.label, left.value and right.value)
 
         # Invalid operation
-        throw_invalid_operation_err(
+        return throw_invalid_operation_err(
             left.label, op, right.label, self.node_start_pos, self.node_end_pos
         )
 
-    def handle_relational_expressions(self, left, right, op):
+    def handle_relational_expressions(self, left, right, op) -> RunTimeObject:
         """
         Handles relational expressions and returns the result of the operation
         as a runtime object
@@ -569,11 +570,11 @@ class Interpreter:
             return RunTimeObject("boolean", res)
 
         # Invalid operation
-        throw_invalid_operation_err(
+        return throw_invalid_operation_err(
             left.label, op, right.label, self.node_start_pos, self.node_end_pos
         )
 
-    def visit_factor(self, node: "FactorNode"):
+    def visit_factor(self, node: "FactorNode") -> RunTimeObject:
         """Visits a FactorNode and returns the value as a runtime object"""
         left_factor = node.left.accept(self)
         left_factor = self.__test_for_identifier(left_factor)
@@ -588,7 +589,7 @@ class Interpreter:
                 return RunTimeObject("boolean", not right_factor.value)
 
             # Invalid operation
-            throw_unary_type_err(
+            return throw_unary_type_err(
                 left_factor.value,
                 right_factor.value,
                 self.node_start_pos,
@@ -607,23 +608,23 @@ class Interpreter:
         return left_factor
 
     @staticmethod
-    def visit_operator(node: "OperatorNode"):
+    def visit_operator(node: "OperatorNode") -> RunTimeObject:
         return RunTimeObject("operator", node.value)
 
     @staticmethod
-    def visit_identifier(node: "IdentifierNode"):
+    def visit_identifier(node: "IdentifierNode") -> RunTimeObject:
         return RunTimeObject("identifier", node.value)
 
     @staticmethod
-    def visit_numeric_literal(node: "NumericLiteralNode"):
+    def visit_numeric_literal(node: "NumericLiteralNode") -> RunTimeObject:
         return RunTimeObject("number", node.value)
 
     @staticmethod
-    def visit_string_literal(node: "StringLiteralNode"):
+    def visit_string_literal(node: "StringLiteralNode") -> RunTimeObject:
         return RunTimeObject("string", node.value)
 
     @staticmethod
-    def visit_boolean_literal(node: "BooleanNode"):
+    def visit_boolean_literal(node: "BooleanNode") -> RunTimeObject:
         return RunTimeObject("boolean", node.value)
 
     @staticmethod
@@ -633,7 +634,7 @@ class Interpreter:
 
     def __test_for_identifier(
         self, runtime_object: "RunTimeObject", current_scope=False
-    ):
+    ) -> RunTimeObject:
         """Checks if the runtime object is an identifier, and returns its value"""
         if runtime_object.label == "identifier":
             return self.current_env.lookup_variable(runtime_object.value, lookup_within_scope=current_scope)  # type: ignore

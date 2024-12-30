@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from src.core.Types import TokenType
 
 
@@ -7,7 +7,7 @@ class Token:
 
     def __init__(self):
         self._type = TokenType.NULL
-        self._value: Union[int, float, str] = ""
+        self._value: Optional[Union[int, float, str]] = None
         self.pos: Tuple[int, int] = (-1, -1)
 
     @property

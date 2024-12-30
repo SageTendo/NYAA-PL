@@ -46,11 +46,8 @@ class Lexer:
         self.__column_number += 1
         self.__program_counter += 1
 
-    def analyze_src_file(self, source_file):
-        """
-        Reads in the source file for tokenization
-        @param source_file: the source file to scan
-        """
+    def analyze_src_file(self, source_file: str):
+        """Reads in the source file for tokenization"""
         with open(source_file, "r") as source:
             c = source.read(1)
             while c:
@@ -58,29 +55,22 @@ class Lexer:
                 c = source.read(1)
         self.__next_char()
 
-    def analyze_repl(self, repl_input):
-        """
-        Reads in the REPL input for tokenization
-        @param repl_input: the REPL input to be tokenized
-        """
+    def analyze_repl(self, repl_input: str):
+        """Reads in the REPL input for tokenization"""
         self.__init__()
         self.__program_buffer = list(repl_input)
         self.__next_char()
 
-    def peek_token(self):
-        """
-        Look at the next token, used when parsing the source
-        @return: The next token found from the source
-        """
+    def peek_token(self) -> Token:
+        """Looks ahead at the next token to be processed (used during parsing)"""
         token = self.get_token()
         self.__token_buffer.append(token)
         return token
 
-    def get_token(self):
+    def get_token(self) -> Token:
         """
         Scans through the source until a recognized symbol or
         keyword is found and returns it as a token object.
-        @return: The token found from scanning the source's symbols
         """
         if len(self.__token_buffer) > 0:
             return self.__token_buffer.pop(0)
@@ -89,12 +79,10 @@ class Lexer:
         while self.__char.isspace():
             self.__next_char()
 
-        #  self.__store_position()  # Remember position for error reporting
-
         self.__token_position.line_number = self.__line_number
         self.__token_position.column_number = self.__column_number
-        if self.__char != EOF:
 
+        if self.__char != EOF:
             if self.__char.isalpha() or self.__char == "_":
                 self.__process_word(token)
             elif self.__char.isdigit():
@@ -211,13 +199,8 @@ class Lexer:
         self.__log(f"Token: {token}")
         return token
 
-    def __process_word(self, token):
-        """
-        Processes found identifiers or reserved words and
-        returns a token with its associated type and value (the processed word).
-        @param token: The token to assign a type and value to
-        @return: The token after processing the word
-        """
+    def __process_word(self, token: Token):
+        """Scan through the source code and process a found word into a token"""
         processed_word = ""
 
         while self.__char.isalpha() or self.__char == "_":
@@ -238,12 +221,8 @@ class Lexer:
         token.value = processed_word
         token.type = TokenType.ID
 
-    def __process_number(self, token):
-        """
-        Processes found numbers and  returns a token with its associated type and value (the processed number).
-        @param token: The token to assign a type and value to
-        @return: The token after processing the number
-        """
+    def __process_number(self, token: Token):
+        """Scan through the source code and process a found number into a token"""
         processed_number = int(self.__char)
 
         self.__next_char()
@@ -255,12 +234,11 @@ class Lexer:
         token.value = processed_number
         token.type = TokenType.INT
 
-    def __process_float(self, token):
-        """
-        Processes found floating point numbers and returns a token with its associated type and value.
-        @param token: The token to assign a type and value to
-        @return: The token after processing the float
-        """
+    def __process_float(self, token: Token):
+        """Scan through the source code and process a found float number into a token"""
+        if not isinstance(token.value, int):
+            raise LexerError("Invalid float number", self.line_number, self.col_number)
+
         processed_number = float(self.__char)
         divisor = 10
 
@@ -272,16 +250,11 @@ class Lexer:
             self.__next_char()
 
         processed_fraction = processed_number / divisor
-        token.value = token.value + processed_fraction
+        token.value += processed_fraction
         token.type = TokenType.FLOAT
 
-    def _process_string(self, token):
-        """
-        Processes found string literals and
-        returns a token with its associated type and value (the processed string)
-        @param token: The token to assign a type and value to
-        @return: The token after processing the string
-        """
+    def _process_string(self, token: Token):
+        """Scan through the source code and process a found string into a token"""
         processed_string = ""
 
         self.__next_char()
@@ -324,15 +297,13 @@ class Lexer:
         token.value = processed_string
         token.type = TokenType.STR
 
-    def __store_position(self):
-        self.__token_position.line_number = self.__line_number
-        self.__token_position.column_number = self.__column_number
-
     def __skip_comment(self):
+        """Skip a single line comment"""
         while self.__char != "\n":
             self.__next_char()
 
     def __skip_comment_block(self, count):
+        """Skip a block comment"""
         while True:
             if count == 0:
                 break
@@ -342,16 +313,16 @@ class Lexer:
             self.__next_char()
 
     @property
-    def line_number(self):
+    def line_number(self) -> int:
         """Returns the line number of the current token"""
         return self.__token_position.line_number
 
     @property
-    def col_number(self):
+    def col_number(self) -> int:
         """Returns the column number of the current token"""
         return self.__token_position.column_number
 
-    def __log(self, message):
+    def __log(self, message: str):
         """Logs a message if verbose is enabled"""
         if self.__verbose:
             print(message)
