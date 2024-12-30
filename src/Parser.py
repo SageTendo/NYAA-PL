@@ -1,5 +1,7 @@
+from pathlib import Path
 import sys
 
+from typing import Optional
 from src.core.ASTNodes import (
     BodyNode,
     Node,
@@ -915,41 +917,44 @@ class Parser:
         self.__log("</Factor>")
         return factor_node
 
-    def parse_repl(self):
-        """
-        Parse REPL input and return the AST representation of the input
-        @return: The AST representation of the REPL input
-        """
+    def parse_repl(self, repl_input: str) -> Node:
+        """Entry point for the parser to parse a REPL input string and return the respective AST"""
+        self.__log("<Repl>")
+        # Prepare lexer
+        self.__lexer.analyze_repl(repl_input)
+        self.consume_token()
+
+        repl_node = None
         if self.match(TokenType.ENDMARKER):
-            return None
+            return Node("null")
         elif self.match(TokenType.DEF):
-            return self.parse_func_def()
+            repl_node = self.parse_func_def()
         elif TokenType.statement_start(self.curr_tkn):
             if TokenType.bin_op(self.peek_token()):
-                return self.parse_expr()
-            return self.parse_body()
+                repl_node = self.parse_expr()
+            else:
+                repl_node = self.parse_body()
 
         elif TokenType.expression(self.curr_tkn):
-            return self.parse_expr()
+            repl_node = self.parse_expr()
         else:
-            throw_unexpected_token_err(
+            return throw_unexpected_token_err(
                 self.curr_tkn.type,
                 "[EXPR or STATEMENT_TYPE or DEFINE]",
                 self.curr_tkn.line_num,
                 self.curr_tkn.column_num,
             )
 
-    def parse_source(self, source_path=None, repl_input=None):
-        """
-        Entry point for the parser
-        @param repl_input: The REPL input
-        @param source_path: The Nyaa source code
-        @return: The AST of the Nyaa source code
-        """
-        if source_path:
+        self.__log("</Repl>")
+        return repl_node
+
+    def parse_source(self, filepath: str):
+        """Entry point for the parser to parse a Nyaa source file"""
+        source = Path(filepath)
+        if source.exists():
             try:
                 # Prepare lexer
-                self.__lexer.analyze_src_file(source_path)
+                self.__lexer.analyze_src_file(source)
                 self.consume_token()
 
                 self.__log("<Program>")
@@ -962,15 +967,6 @@ class Parser:
             except LexerError as e:
                 print(e, file=sys.stderr)
                 exit(1)
-
-        elif repl_input:
-            # Prepare lexer
-            self.__lexer.analyze_repl(repl_input)
-            self.consume_token()
-
-            self.__log("<Repl>")
-            repl_node = self.parse_repl()
-            self.__log("</Repl>")
-            return repl_node
         else:
-            raise Exception("Either source_path or repl_input must be provided")
+            print(f"Error: '{source}' not found!", file=sys.stderr)
+            exit(1)

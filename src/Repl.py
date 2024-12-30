@@ -1,12 +1,14 @@
 import readline
 import sys
 
+from src.Interpreter import Interpreter
+from src.Parser import Parser
 from src.core.RuntimeObject import RunTimeObject
 from src.utils.Constants import SUCCESS, ENDC
 
 
 class Repl:
-    def __init__(self, parser, interpreter):
+    def __init__(self, parser: Parser, interpreter: Interpreter):
         self.parser = parser
         self.interpreter = interpreter
         self.autocompletion_cmds = None
@@ -17,6 +19,7 @@ class Repl:
         readline.parse_and_bind("set blink-matching-paren on")
 
     def run(self):
+        """Starts the REPL"""
         print(
             f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
             f"Welcome to the NYAA REPL! Type 'jaa ne' to exit. (｡♥‿♥｡)\n{ENDC}"
@@ -26,13 +29,14 @@ class Repl:
             line = self.handle_input()
             if not line:
                 continue
-            self.execute(line)
+            self.interpret(line)
 
     @staticmethod
     def handle_input():
+        """Handles input from the user"""
         try:
             line = str(input(">> "))
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print()
             exit(1)
 
@@ -49,13 +53,16 @@ class Repl:
             line += next_line
         return line if len(line) > 0 else None
 
-    def execute(self, line):
+    def interpret(self, line: str):
+        """Parses and interprets input from the user"""
         try:
-            AST = self.parser.parse_source(repl_input=line)
-            res = self.interpreter.interpret(AST)
+            AST = self.parser.parse_repl(repl_input=line)
+            if not AST:  # Empty input
+                return
 
-            # Add successful commands to history
+            res = self.interpreter.interpret(AST)
             readline.add_history(line)
+
             if not res or res.label == "null":
                 print()
                 return

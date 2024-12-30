@@ -1,10 +1,8 @@
-from ctypes import Union
-import re
 import sys
-from typing import Optional
 
 
 from src.core.ASTNodes import (
+    Node,
     PrintNode,
     BodyNode,
     ProgramNode,
@@ -75,7 +73,7 @@ class Interpreter:
         if self.__verbose:
             print(message)
 
-    def interpret(self, ast: ProgramNode):
+    def interpret(self, ast: Node):
         """
         Interprets the given abstract syntax tree by visiting the root node
         and returning the result of the interpretation

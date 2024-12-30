@@ -95,7 +95,7 @@ class TestNyaa(TestCase):
         for file in os.listdir(test_dir):
             try:
                 print(f"[Parser] Running test on: {file}")
-                self.parser.parse_source(source_path=test_dir + file)
+                self.parser.parse_source(filepath=test_dir + file)
 
                 print(f"{SUCCESS}  Passed{ENDC}")
             except Exception as e:
@@ -212,7 +212,7 @@ class TestNyaa(TestCase):
             )
             try:
                 expected = eval(eval_input)
-                ast = self.parser.parse_source(repl_input=repl_input)
+                ast = self.parser.parse_repl(repl_input=repl_input)
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:
@@ -262,7 +262,7 @@ class TestNyaa(TestCase):
 
             try:
                 expected = eval(eval_input)
-                ast = self.parser.parse_source(repl_input=repl_input)
+                ast = self.parser.parse_repl(repl_input=repl_input)
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:

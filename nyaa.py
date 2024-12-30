@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 import sys
 
 from src.Interpreter import Interpreter
@@ -46,7 +47,7 @@ def main():
     if "src" not in args:
         Repl(parser, interpreter).run()
     else:
-        AST = parser.parse_source(source_path=args.src)
+        AST = parser.parse_source(filepath=args.src)
         interpreter.interpret(AST)
 
 
