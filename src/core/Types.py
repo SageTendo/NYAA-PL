@@ -177,6 +177,9 @@ class TokenType(Enum):
     def __str__(self) -> str:
         return self.name
 
+    def __repr__(self) -> str:
+        return self.name
+
 
 RESERVED_WORDS = {
     "uWu_nyaa": TokenType.MAIN,

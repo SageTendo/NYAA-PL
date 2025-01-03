@@ -18,7 +18,7 @@ class Repl:
         readline.set_history_length(1000)
         readline.parse_and_bind("set blink-matching-paren on")
 
-    def run(self):
+    def run(self) -> None:
         """Starts the REPL"""
         print(
             f"{SUCCESS}Ohayo!!! (◕‿◕✿)\n"
@@ -32,10 +32,10 @@ class Repl:
             self.interpret(line)
 
     @staticmethod
-    def handle_input():
+    def handle_input() -> str:
         """Handles input from the user"""
         try:
-            line = str(input(">> "))
+            line = str(input(">> ")).strip()
         except (KeyboardInterrupt, EOFError):
             print()
             exit(1)
@@ -51,9 +51,9 @@ class Repl:
                 line += next_line
                 next_line = str(input())
             line += next_line
-        return line if len(line) > 0 else None
+        return line
 
-    def interpret(self, line: str):
+    def interpret(self, line: str) -> None:
         """Parses and interprets input from the user"""
         try:
             AST = self.parser.parse_repl(repl_input=line)

@@ -1,3 +1,4 @@
+from pathlib import Path
 from src.core.Token import Token
 from src.core.Types import TokenType, RESERVED_WORDS
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
@@ -10,17 +11,19 @@ class Lexer:
     class __Position:
         """Represents the position of a token in the source code"""
 
-        def __init__(self, *, line: int = -1, col: int = -1):
+        def __init__(self, *, line: int = -1, col: int = -1) -> None:
             self.line_number = line
             self.column_number = col
 
-    def __init__(self, verbose=False):
+    def __init__(self, verbose: bool = False) -> None:
         """
         Initializes the Lexer
         @param verbose: Flag to enable logging
         """
         self.__verbose = verbose
+        self.init()
 
+    def init(self) -> None:
         self.__char = ""
         self.__last_read_char = ""
         self.__line_number = 1
@@ -28,10 +31,10 @@ class Lexer:
         self.__token_position = self.__Position(line=1, col=0)
 
         self.__program_counter = 0
-        self.__program_buffer = []
-        self.__token_buffer = []
+        self.__program_buffer: list[str] = []
+        self.__token_buffer: list[Token] = []
 
-    def __next_char(self):
+    def __next_char(self) -> None:
         """Get the next character from the program file"""
         if self.__last_read_char == "\n":
             self.__line_number += 1
@@ -46,7 +49,7 @@ class Lexer:
         self.__column_number += 1
         self.__program_counter += 1
 
-    def analyze_src_file(self, source_file: str):
+    def analyze_src_file(self, source_file: Path) -> None:
         """Reads in the source file for tokenization"""
         with open(source_file, "r") as source:
             c = source.read(1)
@@ -55,9 +58,9 @@ class Lexer:
                 c = source.read(1)
         self.__next_char()
 
-    def analyze_repl(self, repl_input: str):
+    def analyze_repl(self, repl_input: str) -> None:
         """Reads in the REPL input for tokenization"""
-        self.__init__()
+        self.init()
         self.__program_buffer = list(repl_input)
         self.__next_char()
 
@@ -94,7 +97,6 @@ class Lexer:
             elif self.__char == '"':
                 self._process_string(token)
             else:
-
                 if self.__char == "(":
                     token.type = TokenType.LPAR
                     self.__next_char()
@@ -199,7 +201,7 @@ class Lexer:
         self.__log(f"Token: {token}")
         return token
 
-    def __process_word(self, token: Token):
+    def __process_word(self, token: Token) -> None:
         """Scan through the source code and process a found word into a token"""
         processed_word = ""
 
@@ -214,14 +216,14 @@ class Lexer:
             self.__next_char()
 
         if processed_word in RESERVED_WORDS:
-            token.value = processed_word
+            token.word = processed_word
             token.type = RESERVED_WORDS[processed_word]
             return
 
-        token.value = processed_word
+        token.word = processed_word
         token.type = TokenType.ID
 
-    def __process_number(self, token: Token):
+    def __process_number(self, token: Token) -> None:
         """Scan through the source code and process a found number into a token"""
         processed_number = int(self.__char)
 
@@ -231,12 +233,12 @@ class Lexer:
             processed_number = (processed_number * 10) + next_digit
             self.__next_char()
 
-        token.value = processed_number
+        token.number = processed_number
         token.type = TokenType.INT
 
-    def __process_float(self, token: Token):
+    def __process_float(self, token: Token) -> None:
         """Scan through the source code and process a found float number into a token"""
-        if not isinstance(token.value, int):
+        if not isinstance(token.number, int):
             raise LexerError("Invalid float number", self.line_number, self.col_number)
 
         processed_number = float(self.__char)
@@ -250,16 +252,15 @@ class Lexer:
             self.__next_char()
 
         processed_fraction = processed_number / divisor
-        token.value += processed_fraction
+        token.number += processed_fraction
         token.type = TokenType.FLOAT
 
-    def _process_string(self, token: Token):
+    def _process_string(self, token: Token) -> None:
         """Scan through the source code and process a found string into a token"""
         processed_string = ""
 
         self.__next_char()
         while self.__char != '"':
-
             if self.__char == EOF:
                 raise LexerError(
                     "Unterminated string", self.line_number, self.col_number
@@ -273,7 +274,7 @@ class Lexer:
                 )
 
             if len(processed_string) + 1 > MAX_STR_LEN:
-                raise LexerError(f"String too long", self.line_number, self.col_number)
+                raise LexerError("String too long", self.line_number, self.col_number)
 
             if self.__char == "\\":  # Escape characters
                 self.__next_char()
@@ -294,15 +295,15 @@ class Lexer:
             self.__next_char()
 
         self.__next_char()
-        token.value = processed_string
+        token.word = processed_string
         token.type = TokenType.STR
 
-    def __skip_comment(self):
+    def __skip_comment(self) -> None:
         """Skip a single line comment"""
         while self.__char != "\n":
             self.__next_char()
 
-    def __skip_comment_block(self, count):
+    def __skip_comment_block(self, count: int) -> None:
         """Skip a block comment"""
         while True:
             if count == 0:
@@ -322,7 +323,7 @@ class Lexer:
         """Returns the column number of the current token"""
         return self.__token_position.column_number
 
-    def __log(self, message: str):
+    def __log(self, message: str) -> None:
         """Logs a message if verbose is enabled"""
         if self.__verbose:
             print(message)

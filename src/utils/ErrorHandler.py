@@ -1,6 +1,7 @@
 import random
 from enum import Enum
 
+from src.core.Types import TokenType
 from src.utils.Constants import ERROR, WARNING, SUCCESS, ENDC
 
 
@@ -12,7 +13,6 @@ class ErrorType(Enum):
 
 
 class LexerError(Exception):
-
     def __init__(self, message: str, line_number: int, col_number: int):
         self.message = (
             f"{WARNING}{emoji()}\n"
@@ -23,7 +23,6 @@ class LexerError(Exception):
 
 
 class ParserError(Exception):
-
     def __init__(self, message: str, line_number: int, col_number: int):
         self.message = (
             f"{WARNING}{emoji()}\n"
@@ -33,7 +32,6 @@ class ParserError(Exception):
 
 
 class InterpreterError(Exception):
-
     def __init__(
         self, err_tpye: ErrorType, message: str, start_pos: tuple, end_pos: tuple
     ):
@@ -51,7 +49,9 @@ class InterpreterError(Exception):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Syntax errors
-def throw_unexpected_token_err(token_type, expected_type, line_number, col_number):
+def throw_unexpected_token_err(
+    token_type: TokenType, expected_type: str, line_number: int, col_number: int
+):
     """
     Throws an error when an unexpected token is parsed
     @param token_type   : The unexpected token type
@@ -69,7 +69,7 @@ def throw_unexpected_token_err(token_type, expected_type, line_number, col_numbe
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Runtime Errors
-def throw_invalid_operation_err(lhs, op, rhs, start_pos, end_pos):
+def throw_invalid_operation_err(lhs: str, op: str, rhs: str, start_pos, end_pos):
     """
     Throws an exception when an invalid operation is performed
     @param lhs: LHS value

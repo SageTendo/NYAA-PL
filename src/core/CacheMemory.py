@@ -8,7 +8,7 @@ class LRUCache:
         @param capacity: The maximum number of items the cache can hold
         """
         self.__capacity = capacity
-        self.__cache_map = OrderedDict()
+        self.__cache_map: OrderedDict = OrderedDict()
 
     def get(self, key):
         """

@@ -1,8 +1,10 @@
-from typing import Any
+from typing import Any, Optional
 
 
 class RunTimeObject:
-    def __init__(self, label: str, value: Any, value_type=None):
+    def __init__(
+        self, label: str, value: Any, value_type: Optional[str] = None
+    ) -> None:
         """
         Initializes a new runtime object
         @param label: The label of the runtime object
@@ -14,36 +16,36 @@ class RunTimeObject:
         self.__type = value_type
 
     @property
-    def label(self):
+    def label(self) -> str:
         """Returns the label of the runtime object"""
         return self.__label
 
     @property
-    def value(self):
+    def value(self) -> Any:
         """Returns the value held by the runtime object"""
         return self.__value
 
     @value.setter
-    def value(self, value):
+    def value(self, value: Any) -> None:
         """Set the value of the runtime object"""
         self.__value = value
 
     @property
-    def type(self):
+    def type(self) -> Optional[str]:
         """Returns the data type of the runtime object"""
         return self.__type
 
-    def copy(self):
+    def copy(self) -> "RunTimeObject":
         """Returns a new instance of the runtime object"""
         return RunTimeObject(self.__label, self.value, self.type)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Returns a string representation of the runtime object"""
         if not self.__type:
             return f"RuntimeObject({self.__label}) = {self.value}"
         return f"RuntimeObject({self.__label} | {self.__type}) = {self.__value}"
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Checks if the runtime object is equal to another runtimeobject
         @param other: The other runtimeobject to compare with
@@ -56,6 +58,6 @@ class RunTimeObject:
             and self.__type == other.type
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Return the hash of the runtime object"""
         return hash((self.__label, self.__type, self.__value))

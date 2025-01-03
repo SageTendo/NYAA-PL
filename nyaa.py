@@ -1,5 +1,4 @@
 import argparse
-from pathlib import Path
 import sys
 
 from src.Interpreter import Interpreter
@@ -8,7 +7,7 @@ from src.Parser import Parser
 from src.Repl import Repl
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Custom arg parser for parsing CLI arguments"""
     arg_parser = argparse.ArgumentParser()
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
@@ -38,7 +37,7 @@ def parse_args():
     return arg_parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
     lexer = Lexer(verbose=args.lexer)
     parser = Parser(lexer=lexer, verbose=args.parser)

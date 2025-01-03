@@ -1,6 +1,8 @@
 import json
+from typing import Optional
 
 from src.core.CacheMemory import cache_mem
+from src.core.Token import Token
 
 
 class Node:
@@ -10,11 +12,13 @@ class Node:
         self.end_pos: tuple = (-1, -1)
 
     def accept(self, visitor):
+        """Invokes visitor method on node"""
         if cached_visit := cache_mem.get(self):
             return cached_visit(self)
         return visitor.visit(self)
 
-    def to_json(self):
+    def to_json(self) -> dict:
+        """Represent AST/Node as dictionary"""
         node_map = self.__dict__.copy()
         node_map["start_pos"] = self.start_pos
         node_map["end_pos"] = self.end_pos
@@ -23,16 +27,10 @@ class Node:
             if v is None:
                 continue
 
-            if v is True:
-                node_map[k] = "true"
-            if v is False:
-                node_map[k] = "false"
+            node_map[k] = "true" if v is True else "false"
 
             if isinstance(v, list):
-                node_map[k] = []
-                for item in v:
-                    if item:
-                        node_map[k].append(item.to_json())
+                node_map[k] = [item.to_json() for item in v]
 
             if isinstance(v, dict):
                 node_map[k] = {}
@@ -44,7 +42,7 @@ class Node:
                 node_map[k] = v.to_json()
         return node_map
 
-    def encode_json(self):
+    def encode_json(self) -> str:
         return json.dumps(self.to_json(), indent=2)
 
 
@@ -60,21 +58,21 @@ class ProgramNode(Node):
         super().__init__("program")
 
         self.functions = []
-        self.body: BodyNode
+        self.body: Optional[BodyNode] = None
         self.eof = False
 
     def set_eof(self):
         self.eof = True
 
-    def append_func(self, func):
+    def append_func(self, func: "FuncDefNode"):
         self.functions.append(func)
 
-    def set_body(self, body):
+    def set_body(self, body: "BodyNode"):
         self.body = body
 
 
 class FuncDefNode(Node):
-    def __init__(self, identifier, args, body):
+    def __init__(self, identifier: str, args: Optional["ArgsNode"], body: "BodyNode"):
         super().__init__("func_def")
         self.identifier = identifier
         self.args = args
@@ -86,7 +84,7 @@ class BodyNode(Node):
         super().__init__("body")
         self.statements = []
 
-    def append(self, statement):
+    def append(self, statement: Node):
         self.statements.append(statement)
 
 
@@ -105,7 +103,7 @@ class ReturnNode(Node):
         super().__init__("return")
         self.expr = None
 
-    def set_expr(self, expr):
+    def set_expr(self, expr: "ExprNode"):
         self.expr = expr
 
 
@@ -114,28 +112,8 @@ class ArgsNode(Node):
         super().__init__("args")
         self.children = []
 
-    def append(self, argument):
+    def append(self, argument: "ExprNode"):
         self.children.append(argument)
-
-
-class CallNode(Node):
-    def __init__(self, identifier, args):
-        super().__init__("call")
-        self.identifier = identifier
-        self.args = args
-
-
-class InputNode(Node):
-    def __init__(self, msg=None):
-        super().__init__("input")
-        self.message = msg if msg else ""
-
-
-class PrintNode(Node):
-    def __init__(self, args, print_ln=False):
-        super().__init__("print")
-        self.args = args
-        self.println = print_ln
 
 
 class WhileNode(ConditionalNode):
@@ -155,7 +133,6 @@ class ForNode(Node):
 class IfNode(ConditionalNode):
     def __init__(self, expr, body):
         super().__init__(expr, body, "if")
-
         self.else_if_statements = []
         self.else_body = None
 
@@ -184,8 +161,8 @@ class AssignmentNode(Node):
 
 
 class ExprNode(Node):
-    def __init__(self):
-        super().__init__("expr")
+    def __init__(self, label: str = "expr"):
+        super().__init__(label)
 
         self._left = None
         self._right = None
@@ -216,22 +193,42 @@ class ExprNode(Node):
         self._operator = value
 
 
-class PostfixExprNode(Node):
-    def __init__(self, left, op=None):
+class CallNode(ExprNode):
+    def __init__(self, identifier, args):
+        super().__init__("call")
+        self.identifier = identifier
+        self.args = args
+
+
+class InputNode(ExprNode):
+    def __init__(self, msg=None):
+        super().__init__("input")
+        self.message = msg if msg else ""
+
+
+class PrintNode(ExprNode):
+    def __init__(self, args, print_ln=False):
+        super().__init__("print")
+        self.args = args
+        self.println = print_ln
+
+
+class PostfixExprNode(ExprNode):
+    def __init__(self, left: ExprNode, op=None):
         super().__init__("postfix_expr")
         self.left = left
         self.operator = op
 
 
-class SimpleExprNode(Node):
-    def __init__(self, left, right=None, op=None):
+class SimpleExprNode(ExprNode):
+    def __init__(self, left: ExprNode, right: ExprNode, op=None):
         super().__init__("simple_expr")
         self.left = left
         self.right = right
         self.operator = op
 
 
-class TermNode(Node):
+class TermNode(ExprNode):
     def __init__(self, left, right=None, op=None):
         super().__init__("term")
         self.left = left
@@ -239,7 +236,7 @@ class TermNode(Node):
         self.operator = op
 
 
-class FactorNode(Node):
+class FactorNode(ExprNode):
     def __init__(self, left, right=None):
         super().__init__("factor")
         self.left = left
@@ -249,12 +246,12 @@ class FactorNode(Node):
 class ArrayNode(Node):
     def __init__(
         self,
-        label,
-        identifier,
-        index=None,
-        size=None,
-        value=None,
-        initial_values=None,
+        label: str,
+        identifier: str,
+        index: Optional[ExprNode] = None,
+        size: Optional[ExprNode] = None,
+        value: Optional[ExprNode] = None,
+        initial_values: Optional[list[ExprNode]] = None,
     ):
         super().__init__(label)
         self.identifier = identifier
@@ -264,30 +261,30 @@ class ArrayNode(Node):
         self.initial_values = initial_values
 
 
-class IdentifierNode(Node):
+class IdentifierNode(ExprNode):
     def __init__(self, token):
         super().__init__("identifier")
-        self.value = token.value
+        self.value = token.word
 
 
-class NumericLiteralNode(Node):
-    def __init__(self, token):
+class NumericLiteralNode(ExprNode):
+    def __init__(self, token: Token):
         super().__init__("numeric_literal")
 
         self.type = token.type
-        self.value = token.value
+        self.value = token.number
 
     def to_json(self):
         return {"type": str(self.type), "value": str(self.value)}
 
 
-class StringLiteralNode(Node):
+class StringLiteralNode(ExprNode):
     def __init__(self, token):
         super().__init__("string_literal")
-        self.value = token.value
+        self.value = token.word
 
 
-class BooleanNode(Node):
+class BooleanNode(ExprNode):
     def __init__(self, boolean_value):
         super().__init__("boolean_literal")
         self.value = boolean_value
