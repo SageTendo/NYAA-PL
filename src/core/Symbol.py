@@ -22,7 +22,7 @@ class Symbol:
         """Return the hash of the symbol"""
         return hash(self.__symbol_name)
 
-    def __eq__(self, other: "Symbol") -> bool:
+    def __eq__(self, other: object) -> bool:
         """
         Checks if the symbol is equal to another symbol
         @param other: The other symbol to compare with

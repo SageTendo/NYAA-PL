@@ -1,13 +1,15 @@
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
+
 from src.core.Types import TokenType
 
 
 class Token:
     """Represents a token"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._type = TokenType.NULL
-        self._value: Optional[Union[int, float, str]] = None
+        self._word: str = ""
+        self._number: Union[int, float] = 0
         self.pos: Tuple[int, int] = (-1, -1)
 
     @property
@@ -15,16 +17,24 @@ class Token:
         return self._type
 
     @type.setter
-    def type(self, tok_type: TokenType):
+    def type(self, tok_type: TokenType) -> None:
         self._type = tok_type
 
     @property
-    def value(self):
-        return self._value
+    def word(self) -> str:
+        return self._word
 
-    @value.setter
-    def value(self, value):
-        self._value = value
+    @word.setter
+    def word(self, value: str) -> None:
+        self._word = value
+
+    @property
+    def number(self) -> Union[int, float]:
+        return self._number
+
+    @number.setter
+    def number(self, value: Union[int, float]) -> None:
+        self._number = value
 
     @property
     def line_num(self) -> int:
@@ -34,7 +44,7 @@ class Token:
     def column_num(self) -> int:
         return self.pos[1]
 
-    def __str__(self):
-        if self.value:
-            return f"type: {self._type} -> {self.value}"
+    def __str__(self) -> str:
+        if self._word:
+            return f"type: {self._type} -> {self._word}"
         return f"type: {self._type}"
