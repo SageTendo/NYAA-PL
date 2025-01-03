@@ -1,6 +1,5 @@
 import readline
 import sys
-from typing import Optional
 
 from src.Interpreter import Interpreter
 from src.Parser import Parser
@@ -33,10 +32,10 @@ class Repl:
             self.interpret(line)
 
     @staticmethod
-    def handle_input() -> Optional[str]:
+    def handle_input() -> str:
         """Handles input from the user"""
         try:
-            line = str(input(">> "))
+            line = str(input(">> ")).strip()
         except (KeyboardInterrupt, EOFError):
             print()
             exit(1)
@@ -52,7 +51,7 @@ class Repl:
                 line += next_line
                 next_line = str(input())
             line += next_line
-        return line if len(line) > 0 else None
+        return line
 
     def interpret(self, line: str) -> None:
         """Parses and interprets input from the user"""
