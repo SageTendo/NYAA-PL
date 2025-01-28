@@ -1,4 +1,3 @@
-from csv import Error
 import sys
 from typing import Optional
 

@@ -20,19 +20,18 @@ class Lexer:
         Initializes the Lexer
         @param verbose: Flag to enable logging
         """
-        self.__verbose = verbose
-        self.init()
-
-    def init(self) -> None:
         self.__char = ""
         self.__last_read_char = ""
         self.__line_number = 1
         self.__column_number = 0
-        self.__token_position = self.__Position(line=1, col=0)
-
+        self.__token_position = self.__Position(line=self.__line_number, col=self.__column_number)
         self.__program_counter = 0
         self.__program_buffer: list[str] = []
         self.__token_buffer: list[Token] = []
+        self.__verbose = verbose
+
+    def init(self) -> None:
+        self.__init__(self.__verbose)
 
     def __next_char(self) -> None:
         """Get the next character from the program file"""

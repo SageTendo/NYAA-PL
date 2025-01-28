@@ -205,4 +205,11 @@ RESERVED_WORDS = {
     "nai": TokenType.NOT,
     "for": TokenType.FOR,
     "yomu_ln": TokenType.PRINTLN,
+    "f_open": TokenType.FILE_OPEN,
+    "f_close": TokenType.FILE_CLOSE,
+    "f_read": TokenType.FILE_READ,
+    "f_readline": TokenType.FILE_READLINE,
+    "f_write": TokenType.FILE_WRITE,
+    "f_writeline": TokenType.FILE_WRITELINE,
+    "f_EOF": TokenType.FILE_EOF
 }
