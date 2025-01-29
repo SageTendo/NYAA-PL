@@ -9,7 +9,6 @@ class Symbol:
         """
         Initializes a new symbol
         @param name: The name of the symbol
-        @param value: The value of the symbol
         """
         self.__symbol_name = name
 
