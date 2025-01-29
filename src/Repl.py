@@ -11,7 +11,7 @@ class Repl:
     def __init__(self, parser: Parser, interpreter: Interpreter):
         self.parser = parser
         self.interpreter = interpreter
-        self.autocompletion_cmds = None
+        self.autocompletion_commands = None
 
         # Shell confiurations
         readline.set_auto_history(False)
