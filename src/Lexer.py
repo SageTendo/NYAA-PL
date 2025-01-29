@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.core.Token import Token
+from src.core.Token import Token, Position
 from src.core.Types import TokenType, RESERVED_WORDS
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
 from src.utils.ErrorHandler import LexerError
@@ -7,13 +7,6 @@ from src.utils.ErrorHandler import LexerError
 
 class Lexer:
     """Represents a Lexer that tokenizes the source code"""
-
-    class __Position:
-        """Represents the position of a token in the source code"""
-
-        def __init__(self, *, line: int = -1, col: int = -1) -> None:
-            self.line_number = line
-            self.column_number = col
 
     def __init__(self, verbose: bool = False) -> None:
         """
@@ -24,8 +17,10 @@ class Lexer:
         self.__last_read_char = ""
         self.__line_number = 1
         self.__column_number = 0
-        self.__token_position = self.__Position(line=self.__line_number, col=self.__column_number)
-        self.__program_counter = 0
+        self.__token_position = Position(
+            line=self.__line_number, col=self.__column_number
+        )
+
         self.__program_buffer: list[str] = []
         self.__token_buffer: list[Token] = []
         self.__verbose = verbose
@@ -39,14 +34,13 @@ class Lexer:
             self.__line_number += 1
             self.__column_number = 0
 
-        if self.__program_counter == len(self.__program_buffer):
+        if len(self.__program_buffer) == 0:
             self.__char = EOF
             return
 
-        self.__char = self.__program_buffer[self.__program_counter]
+        self.__char = self.__program_buffer.pop(0)
         self.__last_read_char = self.__char
         self.__column_number += 1
-        self.__program_counter += 1
 
     def analyze_src_file(self, source_file: Path) -> None:
         """Reads in the source file for tokenization"""
@@ -117,7 +111,7 @@ class Lexer:
                 elif self.__char == ":":
                     self.__next_char()
                     if self.__char == ":":
-                        token.type = TokenType.DCOLON
+                        token.type = TokenType.COLON
                         self.__next_char()
                 elif self.__char == ";":
                     token.type = TokenType.SEMICOLON
@@ -192,10 +186,7 @@ class Lexer:
             token.type = TokenType.ENDMARKER
 
         # Remember position for error reporting
-        token.pos = (
-            self.__token_position.line_number,
-            self.__token_position.column_number,
-        )
+        token.position = self.__token_position
 
         self.__log(f"Token: {token}")
         return token

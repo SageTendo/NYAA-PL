@@ -34,6 +34,7 @@ from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
 from src.core.Symbol import ArraySymbol
+from src.core.Token import Position
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import (
     throw_unary_type_err,
@@ -67,8 +68,8 @@ class Interpreter:
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Error handling
-        self.node_start_pos = (-1, -1)
-        self.node_end_pos = (-1, -1)
+        self.node_start_pos = Position(line=-1, col=-1)
+        self.node_end_pos = Position(line=-1, col=-1)
 
     def __log(self, message: str) -> None:
         if self.__verbose:
@@ -82,7 +83,7 @@ class Interpreter:
         try:
             return ast.accept(self)
         except RecursionError as e:
-            print(f"{emoji()}\n" f"Visitor Error:", e, file=sys.stderr)
+            print(f"{emoji()}\nVisitor Error:", e, file=sys.stderr)
         except InterpreterError as e:
             print(e, file=sys.stderr)
 
@@ -404,7 +405,7 @@ class Interpreter:
                     node.args.end_pos,
                 )
 
-            # assing arg values to local variables
+            # assign arg values to local variables
             for i, param in enumerate(function_symbol.params):
                 local_env.insert_variable(param, function_args[i])
 
@@ -619,10 +620,7 @@ class Interpreter:
                 return RunTimeObject("number", -right_factor.value)
             except TypeError as e:
                 raise InterpreterError(
-                    ErrorType.TYPE,
-                    e.args[0],
-                    self.node_start_pos,
-                    self.node_end_pos,
+                    ErrorType.TYPE, e.args[0], self.node_start_pos, self.node_end_pos
                 )
         return left_factor
 

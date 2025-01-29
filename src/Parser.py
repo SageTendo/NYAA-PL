@@ -106,7 +106,7 @@ class Parser:
     def __handle_op_token(self) -> str:
         """
         Handles expression operator tokens and
-        returns the respective operator to perfom
+        returns the respective operator to perform
         """
         token_type = self.curr_tkn.type
         self.__expect_and_consume_op()
@@ -146,11 +146,11 @@ class Parser:
     def parse_program(self) -> ProgramNode:
         """program: funcDef* MAIN LPAR RPAR TO (LBRACE body RBRACE | statement ';') | EOF;"""
         program_node = ProgramNode()
-        program_node.start_pos = self.curr_tkn.pos
+        program_node.start_pos = self.curr_tkn.position
 
         if self.curr_tkn.type == TokenType.ENDMARKER:
             program_node.set_eof()
-            program_node.end_pos = self.curr_tkn.pos
+            program_node.end_pos = self.curr_tkn.position
             return program_node
 
         # parse function definitions
@@ -173,7 +173,7 @@ class Parser:
             self.__expect_and_consume(TokenType.RBRACE)
 
         self.__expect_and_consume(TokenType.ENDMARKER)
-        program_node.end_pos = self.curr_tkn.pos
+        program_node.end_pos = self.curr_tkn.position
         return program_node
 
     def parse_body(self) -> BodyNode:
@@ -181,20 +181,20 @@ class Parser:
         self.__log("<Body>")
 
         body = BodyNode()
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         while TokenType.statement_start(self.curr_tkn):
             body.append(self.parse_statement())
 
         self.__log("</Body>")
         body.start_pos = start_pos
-        body.end_pos = self.curr_tkn.pos
+        body.end_pos = self.curr_tkn.position
         return body
 
     def parse_conditional_body(self) -> Node:
         """conditionalBody:  statement conditionalBody? | BREAK | CONTINUE"""
         self.__log("<ConditionalBody>")
         body = BodyNode()
-        body.start_pos = self.curr_tkn.pos
+        body.start_pos = self.curr_tkn.position
 
         while TokenType.statement_start(self.curr_tkn):
             body.append(self.parse_statement())
@@ -207,7 +207,7 @@ class Parser:
             body.append(ContinueNode())
 
         self.__log("</ConditionalBody>")
-        body.end_pos = self.curr_tkn.pos
+        body.end_pos = self.curr_tkn.position
         return body
 
     def parse_statement(self) -> Node:
@@ -216,8 +216,7 @@ class Parser:
                     | whileStatement | ifStatement | printStatement
                     | inputStatement | callStatement | postfixStatement
         """
-        statement_node: Node = Node("null")
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
 
         if self.__expected_token(TokenType.RET):
             statement_node = self.parse_return()
@@ -253,12 +252,8 @@ class Parser:
                 statement_node = self.parse_for()
             elif self.__expected_token(TokenType.IF):
                 statement_node = self.parse_if()
-            elif self.__expected_token(TokenType.PRINT):
-                statement_node = self.parse_print()
-            elif self.__expected_token(TokenType.PRINTLN):
-                statement_node = self.parse_print(print_ln=True)
-            elif self.__expected_token(TokenType.INPUT):
-                statement_node = self.parse_input()
+            elif TokenType.callable(self.curr_tkn):
+                statement_node = self.parse_callable()
             else:
                 return throw_unexpected_token_err(
                     self.curr_tkn.type,
@@ -268,7 +263,7 @@ class Parser:
                 )
 
         statement_node.start_pos = start_pos
-        statement_node.end_pos = self.curr_tkn.pos
+        statement_node.end_pos = self.curr_tkn.position
         return statement_node
 
     def parse_func_def(self) -> FuncDefNode:
@@ -300,22 +295,21 @@ class Parser:
         self.__log("<FuncCall>")
 
         identifier = self.curr_tkn.word
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         self.__expect_and_consume(TokenType.ID)
         args = self.parse_args()
 
         self.__log("</FuncCall>")
         call_node = CallNode(identifier, args)
         call_node.start_pos = start_pos
-        call_node.end_pos = self.curr_tkn.pos
+        call_node.end_pos = self.curr_tkn.position
         return call_node
 
     def parse_postfix(self) -> PostfixExprNode:
         """PostfixExpr: ID (UN_ADD | UN_SUB)"""
         self.__log("<Postfix>")
 
-        postfix_node = None
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -336,7 +330,7 @@ class Parser:
 
         self.__log("</Postfix>")
         postfix_node.start_pos = start_pos
-        postfix_node.end_pos = self.curr_tkn.pos
+        postfix_node.end_pos = self.curr_tkn.position
         return postfix_node
 
     def parse_index(self) -> ExprNode:
@@ -408,7 +402,7 @@ class Parser:
         """Assignment: ID ASSIGN (expr | callable)"""
         self.__log("<Assignment>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         left_node = IdentifierNode(self.curr_tkn)
         self.__expect_and_consume(TokenType.ID)
 
@@ -424,7 +418,7 @@ class Parser:
         self.__log("<Assignment>")
         assignment_node = AssignmentNode(left_node, right_node)
         assignment_node.start_pos = start_pos
-        assignment_node.end_pos = self.curr_tkn.pos
+        assignment_node.end_pos = self.curr_tkn.position
         return assignment_node
 
     def parse_while(self) -> WhileNode:
@@ -532,7 +526,7 @@ class Parser:
         """ReturnStatement: RETURN expr?"""
         self.__log("<Return>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         self.__expect_and_consume(TokenType.RET)
 
         return_node = ReturnNode()
@@ -544,18 +538,19 @@ class Parser:
 
         self.__log("</Return>")
         return_node.start_pos = start_pos
-        return_node.end_pos = self.curr_tkn.pos
+        return_node.end_pos = self.curr_tkn.position
         return return_node
 
     def parse_print(self, print_ln=False) -> PrintNode:
         """PrintStatement: PRINT args"""
         self.__log("<Print>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
 
         # PrintlnStatement: PRINTLN args
         if self.curr_tkn.type == TokenType.PRINTLN:
             self.__expect_and_consume(TokenType.PRINTLN)
+            print_ln = True
         else:
             self.__expect_and_consume(TokenType.PRINT)
 
@@ -564,14 +559,14 @@ class Parser:
 
         self.__log("</Print>")
         print_node.start_pos = start_pos
-        print_node.end_pos = self.curr_tkn.pos
+        print_node.end_pos = self.curr_tkn.position
         return print_node
 
     def parse_input(self) -> InputNode:
         """InputStatement: INPUT (STR)?"""
         self.__log("<Input>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         self.__expect_and_consume(TokenType.INPUT)
         self.__expect_and_consume(TokenType.LPAR)
 
@@ -584,7 +579,7 @@ class Parser:
 
         self.__log("</Input>")
         input_node.start_pos = start_pos
-        input_node.end_pos = self.curr_tkn.pos
+        input_node.end_pos = self.curr_tkn.position
         return input_node
 
     def parse_params(self) -> ArgsNode:
@@ -592,7 +587,7 @@ class Parser:
         self.__log("<Params>")
 
         params = ArgsNode()
-        params.start_pos = self.curr_tkn.pos
+        params.start_pos = self.curr_tkn.position
 
         self.__expect_and_consume(TokenType.LPAR)
         if not (
@@ -621,7 +616,7 @@ class Parser:
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__log("</Params>")
-        params.end_pos = self.curr_tkn.pos
+        params.end_pos = self.curr_tkn.position
         return params
 
     def parse_args(self) -> ArgsNode:
@@ -629,7 +624,7 @@ class Parser:
         self.__log("<Args>")
 
         args = ArgsNode()
-        args.start_pos = self.curr_tkn.pos
+        args.start_pos = self.curr_tkn.position
 
         self.__expect_and_consume(TokenType.LPAR)
         if TokenType.expression(self.curr_tkn) or TokenType.callable(self.curr_tkn):
@@ -641,7 +636,7 @@ class Parser:
         self.__expect_and_consume(TokenType.RPAR)
 
         self.__log("</Args>")
-        args.end_pos = self.curr_tkn.pos
+        args.end_pos = self.curr_tkn.position
         return args
 
     def parse_arg(self):
@@ -659,11 +654,11 @@ class Parser:
     def parse_callable(self) -> ExprNode:
         """callable: PRINT | INPUT | ID args"""
         self.__log("<Callable>")
+        start_pos = self.curr_tkn.position
 
-        call_node = ExprNode()
-        start_pos = self.curr_tkn.pos
-
-        if self.__expected_token(TokenType.PRINT):
+        is_print_token = self.__expected_token(TokenType.PRINT)
+        is_print_token |= self.__expected_token(TokenType.PRINTLN)
+        if is_print_token:
             call_node = self.parse_print()
         elif self.__expected_token(TokenType.INPUT):
             call_node = self.parse_input()
@@ -679,7 +674,7 @@ class Parser:
 
         self.__log("</Callable>")
         call_node.start_pos = start_pos
-        call_node.end_pos = self.curr_tkn.pos
+        call_node.end_pos = self.curr_tkn.position
         return call_node
 
     def parse_expr(self) -> ExprNode:
@@ -687,7 +682,7 @@ class Parser:
         self.__log("<Expr>")
 
         expr_node = ExprNode()
-        expr_node.start_pos = self.curr_tkn.pos
+        expr_node.start_pos = self.curr_tkn.position
 
         if not TokenType.expression(self.curr_tkn):
             return throw_unexpected_token_err(
@@ -702,7 +697,7 @@ class Parser:
             expr_node.operator = self.__handle_op_token()
             expr_node.right = self.parse_expr()
 
-        expr_node.end_pos = self.curr_tkn.pos
+        expr_node.end_pos = self.curr_tkn.position
         self.__log("</Expr>")
         return expr_node
 
@@ -710,7 +705,7 @@ class Parser:
         """simpleExpr: term | term addOp simpleExpr"""
         self.__log("<SimpleExpr>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         if not TokenType.term(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
@@ -727,14 +722,14 @@ class Parser:
 
         self.__log("</SimpleExpr>")
         left.start_pos = start_pos
-        left.end_pos = self.curr_tkn.pos
+        left.end_pos = self.curr_tkn.position
         return left
 
     def parse_term(self) -> ExprNode:
         """term: factor | factor mulOp terme"""
         self.__log("<Term>")
 
-        start_pos = self.curr_tkn.pos
+        start_pos = self.curr_tkn.position
         if not TokenType.factor(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
@@ -751,7 +746,7 @@ class Parser:
 
         self.__log("</Term>")
         left.start_pos = start_pos
-        left.end_pos = self.curr_tkn.pos
+        left.end_pos = self.curr_tkn.position
         return left
 
     def parse_factor(self) -> ExprNode:
@@ -762,7 +757,6 @@ class Parser:
         """
         self.__log("<Factor>")
 
-        factor_node: Node = FactorNode(None, None)
         if not TokenType.factor(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
@@ -776,10 +770,10 @@ class Parser:
                 factor_node = FactorNode(self.parse_func_call())
 
             elif self.__peek_token().type == TokenType.LBRACKET:
-                start_pos = self.curr_tkn.pos
+                start_pos = self.curr_tkn.position
                 array_access_node = self.parse_array_access()
                 array_access_node.start_pos = start_pos
-                array_access_node.end_pos = self.curr_tkn.pos
+                array_access_node.end_pos = self.curr_tkn.position
                 factor_node = FactorNode(array_access_node)
 
             else:
@@ -847,7 +841,6 @@ class Parser:
         self.__lexer.analyze_repl(repl_input)
         self.__consume_token()
 
-        repl_node = Node("null")
         if self.__expected_token(TokenType.DEF):
             repl_node = self.parse_func_def()
         elif TokenType.statement_start(self.curr_tkn):

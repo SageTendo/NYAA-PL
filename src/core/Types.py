@@ -7,53 +7,126 @@ if TYPE_CHECKING:
 
 
 class TokenType(Enum):
-    """Token types"""
+    """
+    This class defines all the tokens that NYAA can parse.
+    A series of helper functions are defined for the parser to
+    use to figure how to handle a token it encounters.
+
+    Tokens are assigned unique integer values using `enum.auto()`,
+    and so IT IS IMPORTANT that the order of these tokens is maintained
+    in order for the parser to understand which categories tokens
+    belong to; ie. (BODY_STATEMENTS, CALLABLES, FACTORS,...)
+
+    To figure out which group/parse_type a token falls under, the value
+    must fall within the _begin_X_definition and _end_X_definition
+    Example:
+        - from _BEGIN_BODY_STATEMENT_DEFINITIONS to _END_BODY_STATEMENT_DEFINITIONS
+        Encompasses a range of tokens that can be indicate body statements to be parsed.
+    """
 
     NULL = auto()  # null token
 
     # Program start
-    MAIN = auto()  # uWu_nyaa
+    MAIN = auto()
 
-    # Types
-    INT = auto()  # inteja
-    STR = auto()  # soturingu
-    FLOAT = auto()  # furoto
-    BOOL = auto()  # buru
+    # ========================================================
+    # STATEMENT DEFINITIONS
+    # ========================================================
+    _BEGIN_BODY_STATEMENT_DEFINITIONS = auto()
+    RET = auto()
+    DEF = auto()
 
-    # Statements (Independent)
-    ID = auto()  # Identifier
-    DEF = auto()  # kawaii
-    IF = auto()  # if
-    WHILE = auto()  # while
+    _BEGIN_CALLABLE_DEFINITIONS = auto()
+    INPUT = auto()
+    PRINT = auto()
+    PRINTLN = auto()
+
+    _BEGIN_FILE_IO_DEFINITIONS = auto()
+    FILE_OPEN = auto()
+    FILE_CLOSE = auto()
+    FILE_READ = auto()
+    FILE_READLINE = auto()
+    FILE_WRITE = auto()
+    FILE_WRITELINE = auto()
+    _END_FILE_IO_DEFINITIONS = auto()
+    _END_CALLABLE_DEFINITIONS = auto()
+
+    _BEGIN_CONDITIONAL_STATEMENT_DEFINITION = auto()
+    IF = auto()
+    WHILE = auto()
     FOR = auto()
-    INPUT = auto()  # ohayo
-    PRINT = auto()  # yomu
-    PRINTLN = auto()  # yomu_ln
-    TRUE = auto()  # HAI
-    FALSE = auto()  # IIE
+    _END_BODY_STATEMENT_DEFINITIONS = auto()
+    ELIF = auto()
+    ELSE = auto()
+    CONTINUE = auto()
+    BREAK = auto()
+    _END_CONDITIONAL_STATEMENT_DEFINITION = auto()
 
-    # File access
-    FILE_OPEN = auto()  # akeru
-    FILE_CLOSE = auto()  # tojiru
-    FILE_READ = auto()  # moji
-    FILE_READLINE = auto()  #
-    FILE_WRITE = auto()  #
-    FILE_WRITELINE = auto()  #
-    FILE_EOF = auto()  #
+    # ========================================================
+    # OPERATOR DEFINITIONS
+    # ========================================================
+    _BEGIN_BINARY_OPERATOR_DEFINITIONS = auto()
+    _BEGIN_ADDITIVE_OPERATOR_DEFINITIONS = auto()
+    # Add
+    PLUS = auto()
+    MINUS = auto()
+    _END_ADDITIVE_OPERATOR_DEFINITIONS = auto()
 
-    # Breaks
-    CONTINUE = auto()  # motto
-    BREAK = auto()  # yamete
-    RET = auto()  # modoru
+    # Multiplicative
+    _BEGIN_MULTIPLICATIVE_OPERATOR_DEFINITIONS = auto()
+    MULTIPLY = auto()
+    DIVIDE = auto()
+    MODULO = auto()  # %
+    _END_MULTIPLICATIVE_OPERATOR_DEFINITIONS = auto()
 
-    # Dependent statements
-    ELIF = auto()  # elif
-    ELSE = auto()  # else
-    ASSIGN = auto()  # wa
+    # Relational
+    _BEGIN_RELATIONAL_OPERATOR_DEFINITIONS = auto()
+    EQ = auto()  # ==
+    NEQ = auto()  # !=
+    LT = auto()  # <
+    GT = auto()  # >
+    LTE = auto()  # <=
+    GTE = auto()  # >=
+    AND = auto()
+    OR = auto()
+    _END_RELATIONAL_OPERATOR_DEFINITIONS = auto()
+    _BEGIN_POSTFIX_OPERATOR_DEFINITIONS = auto()
+    # postfix operators
+    UN_ADD = auto()  # ++
+    UN_SUB = auto()  # --
+    _END_POSTFIX_OPERATOR_DEFINITIONS = auto()
+    _END_BINARY_OPERATOR_DEFINITIONS = auto()
 
-    # Non-alphabetic operators
-    TO = auto()  # =>
+    # ========================================================
+    # FACTOR DEFINITIONS
+    # ========================================================
+    _BEGIN_FACTOR_DEFINITIONS = auto()
+    # Types
+    ID = auto()
+    INT = auto()
+    STR = auto()
+    FLOAT = auto()
+    BOOL = auto()
+    # Booleans
+    TRUE = auto()
+    FALSE = auto()
+
+    _BEGIN_UNARY_OPERATOR_DEFINITIONS = auto()
+    # Negations
+    NOT = auto()
+    NEG = auto()  # -
+    _END_UNARY_OPERATOR_DEFINITIONS = auto()
     LPAR = auto()  # (
+    _END_FACTOR_DEFINITIONS = auto()
+
+    # ========================================================
+    # LITERAL DEFINITIONS
+    # ========================================================
+    _BEGIN_LITERAL_DEFINITIONS = auto()
+    # Non-alphabetic operators
+    ASSIGN = auto()
+    FILE_EOF = auto()
+    TO = auto()  # =>
     RPAR = auto()  # )
     SEMICOLON = auto()  # ;
     LBRACE = auto()  # {
@@ -61,60 +134,43 @@ class TokenType(Enum):
     LBRACKET = auto()  # [
     RBRACKET = auto()  # ]
     COMMA = auto()  # ,
-    # PERIOD = auto()  # .
-    DCOLON = auto()  # ::
-
-    # Binary operators
-    PLUS = auto()  # purasu
-    MINUS = auto()  # mainasu
-    MULTIPLY = auto()  # purodakuto
-    DIVIDE = auto()  # supuritto
-    MODULO = auto()  # %
-    EQ = auto()  # ==
-    NEQ = auto()  # !=
-    LT = auto()  # <
-    GT = auto()  # >
-    LTE = auto()  # <=
-    GTE = auto()  # >=
-    AND = auto()  # ando
-    OR = auto()  # matawa
-
-    # Unary operators
-    NOT = auto()  # nai
-    NEG = auto()  # -
-    UN_ADD = auto()  # ++
-    UN_SUB = auto()  # --
+    COLON = auto()  # ::
+    _END_LITERAL_DEFINITIONS = auto()
 
     ENDMARKER = auto()  # End of file
     ERR = auto()  # Lexer only
 
     @classmethod
     def statement_start(cls, token: "Token") -> bool:
-        return token.type in [
-            TokenType.RET,
-            TokenType.ID,
-            TokenType.WHILE,
-            TokenType.FOR,
-            TokenType.IF,
-            TokenType.PRINT,
-            TokenType.INPUT,
-            TokenType.PRINTLN,
-        ]
+        is_statement_start = token.type == TokenType.ID
+        is_statement_start |= cls.token_within(
+            token,
+            cls._BEGIN_BODY_STATEMENT_DEFINITIONS,
+            cls._END_BODY_STATEMENT_DEFINITIONS,
+        )
+        return is_statement_start
 
     @classmethod
     def conditional_stmt_start(cls, token: "Token") -> bool:
-        return cls.statement_start(token) or token.type in [
-            TokenType.BREAK,
-            TokenType.CONTINUE,
-        ]
+        return cls.statement_start(token) or (
+            token.value < cls._END_CONDITIONAL_STATEMENT_DEFINITION.value
+        )
 
     @classmethod
     def postfix(cls, token: "Token") -> bool:
-        return token.type in [TokenType.UN_ADD, TokenType.UN_SUB]
+        return cls.token_within(
+            token,
+            cls._BEGIN_POSTFIX_OPERATOR_DEFINITIONS,
+            cls._END_POSTFIX_OPERATOR_DEFINITIONS,
+        )
 
     @classmethod
     def unary(cls, token) -> bool:
-        return token.type in [TokenType.NEG, TokenType.NOT]
+        return cls.token_within(
+            token,
+            cls._BEGIN_UNARY_OPERATOR_DEFINITIONS,
+            cls._END_UNARY_OPERATOR_DEFINITIONS,
+        )
 
     @classmethod
     def expression(cls, token: "Token") -> bool:
@@ -126,17 +182,11 @@ class TokenType(Enum):
 
     @classmethod
     def factor(cls, token: "Token") -> bool:
-        return token.type in [
-            TokenType.ID,
-            TokenType.INT,
-            TokenType.STR,
-            TokenType.FLOAT,
-            TokenType.TRUE,
-            TokenType.FALSE,
-            TokenType.LPAR,
-            TokenType.NEG,
-            TokenType.NOT,
-        ]
+        return cls.token_within(
+            token,
+            TokenType._BEGIN_FACTOR_DEFINITIONS,
+            TokenType._END_FACTOR_DEFINITIONS,
+        )
 
     @classmethod
     def bin_op(cls, token: "Token") -> bool:
@@ -144,35 +194,53 @@ class TokenType(Enum):
 
     @classmethod
     def rel_op(cls, token: "Token") -> bool:
-        return token.type in [
-            TokenType.EQ,
-            TokenType.NEQ,
-            TokenType.LT,
-            TokenType.GT,
-            TokenType.LTE,
-            TokenType.GTE,
-        ]
+        return cls.token_within(
+            token,
+            cls._BEGIN_RELATIONAL_OPERATOR_DEFINITIONS,
+            cls._END_RELATIONAL_OPERATOR_DEFINITIONS,
+        )
 
     @classmethod
     def add_op(cls, token: "Token") -> bool:
-        return token.type in [TokenType.PLUS, TokenType.MINUS, TokenType.OR]
+        return cls.token_within(
+            token,
+            cls._BEGIN_ADDITIVE_OPERATOR_DEFINITIONS,
+            cls._END_ADDITIVE_OPERATOR_DEFINITIONS,
+        )
 
     @classmethod
     def mul_op(cls, token: "Token") -> bool:
-        return token.type in [TokenType.MULTIPLY, TokenType.DIVIDE, TokenType.AND]
+        return cls.token_within(
+            token,
+            cls._BEGIN_MULTIPLICATIVE_OPERATOR_DEFINITIONS,
+            cls._END_MULTIPLICATIVE_OPERATOR_DEFINITIONS,
+        )
 
     @classmethod
     def callable(cls, token: "Token") -> bool:
-        return token.type in [
-            TokenType.ID,
-            TokenType.PRINT,
-            TokenType.INPUT,
-            TokenType.PRINTLN,
-        ]
+        return cls.token_within(
+            token,
+            TokenType._BEGIN_CALLABLE_DEFINITIONS,
+            TokenType._END_CALLABLE_DEFINITIONS,
+        )
+
+    @classmethod
+    def file_IO(cls, token: "Token") -> bool:
+        return cls.token_within(
+            token, cls._BEGIN_FILE_IO_DEFINITIONS, cls._END_FILE_IO_DEFINITIONS
+        )
 
     @classmethod
     def assignment(cls, token: "Token") -> bool:
         return token.type in [TokenType.ASSIGN, TokenType.LBRACKET]
+
+    @staticmethod
+    def token_within(
+        token: "Token",
+        start_token_definition: "TokenType",
+        end_token_definition: "TokenType",
+    ):
+        return start_token_definition.value < token.value < end_token_definition.value
 
     def __str__(self) -> str:
         return self.name
@@ -211,5 +279,5 @@ RESERVED_WORDS = {
     "f_readline": TokenType.FILE_READLINE,
     "f_write": TokenType.FILE_WRITE,
     "f_writeline": TokenType.FILE_WRITELINE,
-    "f_EOF": TokenType.FILE_EOF
+    "f_EOF": TokenType.FILE_EOF,
 }

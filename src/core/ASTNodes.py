@@ -2,14 +2,14 @@ import json
 from typing import Optional
 
 from src.core.CacheMemory import cache_mem
-from src.core.Token import Token
+from src.core.Token import Token, Position
 
 
 class Node:
     def __init__(self, node_label: str):
         self.label = node_label
-        self.start_pos: tuple = (-1, -1)
-        self.end_pos: tuple = (-1, -1)
+        self.start_pos: Position = Position(line=-1, col=-1)
+        self.end_pos: Position = Position(line=-1, col=-1)
 
     def accept(self, visitor):
         """Invokes visitor method on node"""
