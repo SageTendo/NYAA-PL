@@ -31,6 +31,7 @@ from src.core.ASTNodes import (
     OperatorNode,
     ForNode,
     ArrayNode,
+    FileNode,
 )
 from src.core.Token import Token
 from src.core.Types import TokenType
@@ -232,7 +233,7 @@ class Parser:
                 statement_node = self.parse_func_call()
 
             elif self.__peek_token().type == TokenType.TO:
-                statement_node = self.parse_array_def()
+                statement_node = self.parse_pointer_assignment()
 
             elif self.__peek_token().type == TokenType.LBRACKET:
                 statement_node = self.parse_array_assignment()
@@ -265,6 +266,31 @@ class Parser:
         statement_node.start_pos = start_pos
         statement_node.end_pos = self.curr_tkn.position
         return statement_node
+
+    def parse_pointer_assignment(self):
+        """PointerAssignment: ID TO array_def | file_open"""
+        pointer_node = Node("null")
+        pointer_node.start_pos = self.curr_tkn.position
+
+        identifier = self.curr_tkn.word
+        self.__expect_and_consume(TokenType.ID)
+        self.__expect_and_consume(TokenType.TO)
+
+        match self.curr_tkn.type:
+            case TokenType.LBRACE | TokenType.LBRACKET:
+                pointer_node = self.parse_array_def(identifier=identifier)
+            case TokenType.FILE_OPEN:
+                pointer_node = self.parse_file_open(identifier=identifier)
+            case _:
+                return throw_unexpected_token_err(
+                    self.curr_tkn.type,
+                    "[ARRAY_DEF_TYPE or FILE_OPEN_TYPE]",
+                    self.curr_tkn.line_num,
+                    self.curr_tkn.column_num,
+                )
+
+        pointer_node.end_pos = self.curr_tkn.position
+        return pointer_node
 
     def parse_func_def(self) -> FuncDefNode:
         """
@@ -344,16 +370,12 @@ class Parser:
         self.__log("</Index>")
         return simple_expr
 
-    def parse_array_def(self) -> ArrayNode:
-        """ArrayDef: ID => [ expr ] | { values* }"""
+    def parse_array_def(self, identifier: str) -> ArrayNode:
+        """ArrayDef: [ expr ] | { values* }"""
         self.__log("<ArrDef>")
 
-        identifier = self.curr_tkn.word
         size = None
         values: list[ExprNode] = []
-        self.__expect_and_consume(TokenType.ID)
-        self.__expect_and_consume(TokenType.TO)
-
         if self.__expected_token(TokenType.LBRACKET):
             self.__expect_and_consume(TokenType.LBRACKET)
             size = self.parse_simple_expr()
@@ -370,6 +392,22 @@ class Parser:
         self.__log("<ArrDef>")
         return ArrayNode(
             label="array_def", identifier=identifier, size=size, initial_values=values
+        )
+
+    def parse_file_open(self, identifier: str) -> FileNode:
+        """FileDef: FILE_OPEN LPAR ID COMMA MODE RPAR"""
+        self.__expect_and_consume(TokenType.FILE_OPEN)
+        self.__expect_and_consume(TokenType.LPAR)
+        filepath = self.parse_expr()
+
+        self.__expect_and_consume(TokenType.COMMA)
+        access_mode = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+        return FileNode(
+            label="file_open",
+            identifier=identifier,
+            filepath=filepath,
+            access_mode=access_mode,
         )
 
     def parse_array_access(self) -> ArrayNode:
@@ -662,6 +700,8 @@ class Parser:
             call_node = self.parse_print()
         elif self.__expected_token(TokenType.INPUT):
             call_node = self.parse_input()
+        elif TokenType.file_IO(self.curr_tkn):
+            call_node = self.parse_file_IO()
         elif self.__expected_token(TokenType.ID):
             call_node = self.parse_func_call()
         else:
@@ -676,6 +716,73 @@ class Parser:
         call_node.start_pos = start_pos
         call_node.end_pos = self.curr_tkn.position
         return call_node
+
+    def parse_file_IO(self) -> FileNode:
+        """File IO: FILE_OPEN | FILE_CLOSE | FILE_READ | FILE_READLINE | FILE_WRITE | FILE_WRITELINE"""
+        match self.curr_tkn.type:
+            case TokenType.FILE_CLOSE:
+                self.__expect_and_consume(TokenType.FILE_CLOSE)
+                self.__expect_and_consume(TokenType.LPAR)
+                identifier = self.curr_tkn.word
+                self.__expect_and_consume(TokenType.ID)
+
+                self.__expect_and_consume(TokenType.RPAR)
+                file_node = FileNode(label="file_close", identifier=identifier)
+            case TokenType.FILE_READ:
+                self.__expect_and_consume(TokenType.FILE_READ)
+                self.__expect_and_consume(TokenType.LPAR)
+                identifier = self.curr_tkn.word
+                self.__expect_and_consume(TokenType.ID)
+                self.__expect_and_consume(TokenType.COMMA)
+
+                n_chars_to_read = None
+                if TokenType.expression(self.curr_tkn):
+                    n_chars_to_read = self.parse_expr()
+                self.__expect_and_consume(TokenType.RPAR)
+
+                file_node = FileNode(
+                    label="file_read",
+                    identifier=identifier,
+                    n_chars_to_read=n_chars_to_read,
+                )
+            case TokenType.FILE_READLINE:
+                self.__expect_and_consume(TokenType.FILE_READLINE)
+                self.__expect_and_consume(TokenType.LPAR)
+                identifier = self.curr_tkn.word
+                self.__expect_and_consume(TokenType.ID)
+                self.__expect_and_consume(TokenType.RPAR)
+
+                file_node = FileNode(
+                    label="file_readline",
+                    identifier=identifier,
+                )
+            case TokenType.FILE_WRITE | TokenType.FILE_WRITELINE:
+                if self.__expected_token(TokenType.FILE_WRITE):
+                    self.__expect_and_consume(TokenType.FILE_WRITE)
+                    label = "file_write"
+                else:
+                    self.__expect_and_consume(TokenType.FILE_WRITELINE)
+                    label = "file_writeline"
+
+                self.__expect_and_consume(TokenType.LPAR)
+                identifier = self.curr_tkn.word
+                self.__expect_and_consume(TokenType.ID)
+                self.__expect_and_consume(TokenType.COMMA)
+
+                write_buffer = self.parse_expr()
+                self.__expect_and_consume(TokenType.RPAR)
+
+                file_node = FileNode(
+                    label=label, identifier=identifier, write_buffer=write_buffer
+                )
+            case _:
+                return throw_unexpected_token_err(
+                    self.curr_tkn.type,
+                    "FILE_IO_TYPE",
+                    self.curr_tkn.line_num,
+                    self.curr_tkn.column_num,
+                )
+        return file_node
 
     def parse_expr(self) -> ExprNode:
         """expr: simpleExpr | simpleExpr relationalOp simpleExpr"""

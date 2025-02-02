@@ -261,6 +261,26 @@ class ArrayNode(Node):
         self.initial_values = initial_values
 
 
+class FileNode(ExprNode):
+    def __init__(
+        self,
+        label: str,
+        identifier: Optional[str] = None,
+        filepath: Optional[ExprNode] = None,
+        access_mode: Optional[ExprNode] = None,
+        n_chars_to_read: Optional[ExprNode] = None,
+        write_buffer: Optional[ExprNode | ArrayNode] = None,
+    ) -> None:
+        # CallNode.__init__(self, identifier, args=None)
+        ExprNode.__init__(self, label)
+        self.identifier = identifier
+        self.filepath = filepath
+        self.access_mode = access_mode
+        self.filepath = filepath
+        self.n_chars_to_read = n_chars_to_read
+        self.write_buffer = write_buffer
+
+
 class IdentifierNode(ExprNode):
     def __init__(self, token):
         super().__init__("identifier")
