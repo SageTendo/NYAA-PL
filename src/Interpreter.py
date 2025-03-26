@@ -1,7 +1,6 @@
 import sys
 from typing import Optional
 
-
 from src.core.ASTNodes import (
     Node,
     PrintNode,
@@ -33,7 +32,7 @@ from src.core.ASTNodes import (
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
-from src.core.Symbol import ArraySymbol
+from src.core.Symbol import VarSymbol, FunctionSymbol
 from src.core.Token import Position
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import (
@@ -47,7 +46,7 @@ from src.utils.ErrorHandler import (
 )
 
 MAX_VISIT_DEPTH = 5470
-INTERNAL_RECURSION_LIMIT = 1010
+INTERNAL_STACK_SIZE = 1010
 SYS_RECURSION_LIMIT = 1000000
 
 
@@ -64,7 +63,7 @@ class Interpreter:
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
-        self.__recursion_count = 0  # Keep track of number of recursive function calls
+        self.__stack_pointer = 0  # Keep track of number of recursive function calls
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Error handling
@@ -152,7 +151,13 @@ class Interpreter:
                         node.args.start_pos,
                         node.args.end_pos,
                     )
-        self.current_env.insert_function(node.identifier, params, node.body)  # type: ignore
+
+        function_obj = RunTimeObject(
+            "function", value=FunctionSymbol(node.identifier, params, node.body)
+        )
+        self.current_env.insert_symbol(
+            node.identifier, VarSymbol(node.identifier, function_obj)
+        )
 
     def visit_body(self, node: BodyNode):
         """
@@ -277,7 +282,10 @@ class Interpreter:
         iterator_runtime_object = RunTimeObject(
             label="number", value=0, value_type="int"
         )
-        self.current_env.insert_variable(node.identifier.value, iterator_runtime_object)  # type: ignore
+        self.current_env.insert_symbol(
+            node.identifier.value,
+            VarSymbol(node.identifier.value, iterator_runtime_object),
+        )
 
         # incrementer to determine direction of iteration
         incrementer = 1 if range_start < range_end else -1
@@ -295,17 +303,13 @@ class Interpreter:
         if node.size:
             array_size = self.__test_for_identifier(node.size.accept(self)).value
             values = [RunTimeObject("null", value="null")] * int(array_size)
-
         elif node.initial_values:
-            array_size = len(node.initial_values)
             values = [value.accept(self) for value in node.initial_values]
-
         else:
-            array_size = -1
             values = []
 
-        array_symbol = ArraySymbol(identifier, array_size, values)
-        self.current_env.insert_array(identifier, array_symbol)  # type: ignore
+        array_symbol = RunTimeObject(identifier, values)
+        self.current_env.insert_symbol(identifier, VarSymbol(identifier, array_symbol))
 
     def visit_array_access(self, node: ArrayNode):
         """
@@ -322,9 +326,9 @@ class Interpreter:
 
         identifier = node.identifier
         index = self.__test_for_identifier(node.index.accept(self)).value
-        array_symbol = self.current_env.lookup_array(identifier)  # type: ignore
+        array = self.current_env.lookup_symbol(identifier).value
 
-        if index < 0 or index >= len(array_symbol.values):
+        if index < 0 or index >= len(array):
             raise InterpreterError(
                 ErrorType.RUNTIME,
                 "Array index out of bounds",
@@ -332,7 +336,7 @@ class Interpreter:
                 node.end_pos,
             )
 
-        return array_symbol.values[index]
+        return array[index]
 
     def visit_array_update(self, node: ArrayNode):
         """
@@ -351,11 +355,11 @@ class Interpreter:
             )
 
         identifier = node.identifier
-        index = self.__test_for_identifier(node.index.accept(self)).value  # type: ignore
+        index = self.__test_for_identifier(node.index.accept(self)).value
         value_runtime = node.value.accept(self)
 
-        array_symbol = self.current_env.lookup_array(identifier)  # type: ignore
-        if int(index) < 0 or int(index) >= len(array_symbol.values):
+        array_symbol = self.current_env.lookup_symbol(identifier).value
+        if int(index) < 0 or int(index) >= len(array_symbol):
             raise InterpreterError(
                 ErrorType.RUNTIME,
                 "Array index out of bounds",
@@ -363,7 +367,7 @@ class Interpreter:
                 node.end_pos,
             )
 
-        array_symbol.values[index] = RunTimeObject(
+        array_symbol[index] = RunTimeObject(
             value_runtime.label, value_runtime.value, value_runtime.type
         )
 
@@ -374,9 +378,14 @@ class Interpreter:
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
-        self.current_env.insert_variable(  # type: ignore
-            lhs.value, RunTimeObject(rhs.label, rhs.value, rhs.type)
-        )
+
+        if rhs.label in "function":
+            self.current_env.insert_symbol(lhs.value, VarSymbol(lhs.value, rhs))
+        else:
+            runtime_object = RunTimeObject(rhs.label, rhs.value, rhs.type)
+            self.current_env.insert_symbol(
+                lhs.value, VarSymbol(lhs.value, runtime_object)
+            )
 
     def visit_call(self, node: CallNode):
         """
@@ -385,14 +394,24 @@ class Interpreter:
         """
         self.check_for_stack_overflow(node)
 
+        function_symbol = self.current_env.lookup_symbol(node.identifier)
+        if function_symbol.label != "function":
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                f"'{node.identifier}' is not a function and cannot be called",
+                node.start_pos,
+                node.end_pos,
+            )
+
+        self.__stack_pointer += 1
         local_env = Environment(
             name=node.identifier,
-            level=self.current_env.level + 1,  # type: ignore
+            level=self.current_env.level + 1,
             parent=self.global_env,
         )
         old_env = self.current_env
-        function_symbol = self.current_env.lookup_function(node.identifier)  # type: ignore
 
+        function_symbol = function_symbol.value
         if node.args:
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
@@ -407,8 +426,7 @@ class Interpreter:
 
             # assign arg values to local variables
             for i, param in enumerate(function_symbol.params):
-                local_env.insert_variable(param, function_args[i])
-
+                local_env.insert_symbol(param, VarSymbol(param, function_args[i]))
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
@@ -419,7 +437,7 @@ class Interpreter:
             cache_mem.put(env_hash, result)
 
         self.current_env = old_env
-        self.__recursion_count -= 1
+        self.__stack_pointer -= 1
         return result
 
     @staticmethod
@@ -432,11 +450,12 @@ class Interpreter:
         """Interprets a print statement to the console"""
         args = node.args.accept(self)
         for i, arg in enumerate(args):
+            spacing = " " if i < len(args) - 1 else ""
             runtime_value = arg.value
-            if i < len(args) - 1:
-                print(runtime_value, end=" ")
+            if isinstance(runtime_value, list):
+                print([x.value for x in runtime_value], end=spacing)
             else:
-                print(runtime_value, end="")
+                print(runtime_value, end=spacing)
 
         if node.println:
             print()
@@ -652,24 +671,23 @@ class Interpreter:
         self, runtime_object: RunTimeObject, current_scope=False
     ) -> RunTimeObject:
         """Checks if the runtime object is an identifier, and returns its value"""
-        if runtime_object.label != "identifier":
-            return runtime_object
-
-        return self.current_env.lookup_variable(  # type: ignore
-            runtime_object.value, lookup_within_scope=current_scope
-        )
+        if runtime_object.label == "identifier":
+            return self.current_env.lookup_symbol(
+                runtime_object.value, lookup_within_scope=current_scope
+            )
+        return runtime_object
 
     def check_for_stack_overflow(self, node: CallNode):
         """
-        Checks if the recursion depth is exceeded.
-        @raise InterpreterError: If the recursion depth is exceeded
+        Checks if the stack pointer has exceeded the internal stack size.
+        @raise InterpreterError: If the stack pointer has exceeded the internal stack size
         """
-        if self.__recursion_count > INTERNAL_RECURSION_LIMIT:
-            self.__recursion_count = 0
+        if self.__stack_pointer > INTERNAL_STACK_SIZE:
+            self.__stack_pointer = 0
             raise InterpreterError(
                 ErrorType.RECURSION,
                 "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
                 node.start_pos,
                 node.end_pos,
             )
-        self.__recursion_count += 1
+        self.__stack_pointer += 1
