@@ -1,7 +1,9 @@
 import sys
+from pathlib import Path
 from typing import Optional
 
 from src.core.ASTNodes import (
+    FileNode,
     Node,
     PrintNode,
     BodyNode,
@@ -32,7 +34,7 @@ from src.core.ASTNodes import (
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
-from src.core.Symbol import VarSymbol, FunctionSymbol
+from src.core.Symbol import VarSymbol, FunctionSymbol, FileSymbol
 from src.core.Token import Position
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import (
@@ -452,13 +454,59 @@ class Interpreter:
         for i, arg in enumerate(args):
             spacing = " " if i < len(args) - 1 else ""
             runtime_value = arg.value
-            if isinstance(runtime_value, list):
-                print([x.value for x in runtime_value], end=spacing)
-            else:
-                print(runtime_value, end=spacing)
+            print(runtime_value, end=spacing)
 
         if node.println:
             print()
+
+    def visit_file_open(self, node: FileNode):
+        """Interprets file open operation"""
+        try:
+            if not node.filepath:
+                raise ValueError("File path must be provided...")
+            elif not node.access_mode:
+                raise ValueError("File access mode must be provided...")
+
+            filepath_object = node.filepath.accept(self)
+            access_mode_object = node.access_mode.accept(self)
+            if not isinstance(filepath_object.value, str):
+                raise TypeError("File path must be a string...")
+            elif not isinstance(access_mode_object.value, str):
+                raise TypeError("File access mode must be a string...")
+
+            filepath = filepath_object.value
+            access_mode = access_mode_object.value.lower()
+            if access_mode not in ["r", "w", "a"]:
+                raise ValueError(
+                    "Invalid file access mode provided...\n"
+                    "Valid Modes: 'r' (Read), 'w' (Write), 'a' (Append)"
+                )
+
+            writeable = True if access_mode in ["w", "a"] else False
+            path = Path(filepath)
+            if writeable:
+                path.parent.mkdir(parents=True, exist_ok=True)
+            elif not path.exists() or not path.is_file():
+                raise ValueError(f"{filepath} is not a valid file path")
+
+            try:
+                file = open(filepath, access_mode)
+            except IOError:
+                raise
+
+            file_object = RunTimeObject("file", FileSymbol(filepath, file, writeable))
+            self.current_env.insert_symbol(
+                node.identifier, VarSymbol(node.identifier, file_object)
+            )
+            log = f"File {filepath} opened with access mode '{access_mode}'"
+            self.__log(success_msg(log))
+        except (ValueError, TypeError, IOError) as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                e.args[0],
+                node.start_pos,
+                node.end_pos,
+            )
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""
