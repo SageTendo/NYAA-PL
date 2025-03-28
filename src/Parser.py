@@ -764,11 +764,12 @@ class Parser:
                 self.__expect_and_consume(TokenType.LPAR)
                 identifier = self.curr_tkn.word
                 self.__expect_and_consume(TokenType.ID)
-                self.__expect_and_consume(TokenType.COMMA)
 
                 n_chars_to_read = None
-                if TokenType.expression(self.curr_tkn):
-                    n_chars_to_read = self.parse_expr()
+                if self.__expected_token(TokenType.COMMA):
+                    self.__expect_and_consume(TokenType.COMMA)
+                    if TokenType.expression(self.curr_tkn):
+                        n_chars_to_read = self.parse_expr()
                 self.__expect_and_consume(TokenType.RPAR)
 
                 file_node = FileNode(
@@ -788,12 +789,12 @@ class Parser:
                     identifier=identifier,
                 )
             case TokenType.FILE_WRITE | TokenType.FILE_WRITELINE:
+                is_write_line = False
                 if self.__expected_token(TokenType.FILE_WRITE):
                     self.__expect_and_consume(TokenType.FILE_WRITE)
-                    label = "file_write"
                 else:
+                    is_write_line = True
                     self.__expect_and_consume(TokenType.FILE_WRITELINE)
-                    label = "file_writeline"
 
                 self.__expect_and_consume(TokenType.LPAR)
                 identifier = self.curr_tkn.word
@@ -804,7 +805,10 @@ class Parser:
                 self.__expect_and_consume(TokenType.RPAR)
 
                 file_node = FileNode(
-                    label=label, identifier=identifier, write_buffer=write_buffer
+                    label="file_write",
+                    identifier=identifier,
+                    write_buffer=write_buffer,
+                    is_write_line=is_write_line,
                 )
             case _:
                 return throw_unexpected_token_err(

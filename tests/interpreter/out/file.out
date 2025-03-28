@@ -1,0 +1,7 @@
+H
+e
+llo  World
+./tests/interpreter/out/file_out.txt write
+H
+ello
+./tests/interpreter/out/file_out.txt append

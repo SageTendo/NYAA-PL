@@ -268,6 +268,7 @@ class FileNode(ExprNode):
         access_mode: Optional[ExprNode] = None,
         n_chars_to_read: Optional[ExprNode] = None,
         write_buffer: Optional[ExprNode | ArrayNode] = None,
+        is_write_line: bool = False,
     ) -> None:
         ExprNode.__init__(self, label)
         self.identifier = identifier
@@ -276,6 +277,7 @@ class FileNode(ExprNode):
         self.filepath = filepath
         self.n_chars_to_read = n_chars_to_read
         self.write_buffer = write_buffer
+        self.is_write_line = is_write_line
 
 
 class IdentifierNode(ExprNode):
