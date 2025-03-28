@@ -296,6 +296,7 @@ class Parser:
         """
         FuncDef:  DEF ID args TO (LBRACE body RBRACE | statement ';')
         """
+        start_pos = self.curr_tkn.position
         self.__expect_and_consume(TokenType.DEF)
         identifier = self.curr_tkn.word
         self.__expect_and_consume(TokenType.ID)
@@ -314,7 +315,10 @@ class Parser:
             body = self.parse_body()
             self.__expect_and_consume(TokenType.RBRACE)
 
-        return FuncDefNode(identifier, args, body)
+        func_def_node = FuncDefNode(identifier, args, body)
+        func_def_node.start_pos = start_pos
+        func_def_node.end_pos = self.curr_tkn.position
+        return func_def_node
 
     def parse_func_call(self) -> CallNode:
         """funcCall: ID args"""
@@ -373,6 +377,7 @@ class Parser:
     def parse_array_def(self, identifier: str) -> ArrayNode:
         """ArrayDef: [ expr ] | { values* }"""
         self.__log("<ArrDef>")
+        start_pos = self.curr_tkn.position
 
         size = None
         values: list[ExprNode] = []
@@ -390,12 +395,16 @@ class Parser:
             self.__expect_and_consume(TokenType.RBRACE)
 
         self.__log("<ArrDef>")
-        return ArrayNode(
+        array_node = ArrayNode(
             label="array_def", identifier=identifier, size=size, initial_values=values
         )
+        array_node.start_pos = start_pos
+        array_node.end_pos = self.curr_tkn.position
+        return array_node
 
     def parse_file_open(self, identifier: str) -> FileNode:
         """FileDef: FILE_OPEN LPAR ID COMMA MODE RPAR"""
+        start_pos = self.curr_tkn.position
         self.__expect_and_consume(TokenType.FILE_OPEN)
         self.__expect_and_consume(TokenType.LPAR)
         filepath = self.parse_expr()
@@ -403,28 +412,37 @@ class Parser:
         self.__expect_and_consume(TokenType.COMMA)
         access_mode = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
-        return FileNode(
+        file_node = FileNode(
             label="file_open",
             identifier=identifier,
             filepath=filepath,
             access_mode=access_mode,
         )
 
+        file_node.start_pos = start_pos
+        file_node.end_pos = self.curr_tkn.position
+        return file_node
+
     def parse_array_access(self) -> ArrayNode:
         """ArrayAccess: ID index"""
         self.__log("<ArrayAccess>")
 
+        start_pos = self.curr_tkn.position
         identifier = self.curr_tkn.word
         self.__expect_and_consume(TokenType.ID)
         index = self.parse_index()
 
         self.__log("</ArrayAccess>")
-        return ArrayNode(label="array_access", identifier=identifier, index=index)
+        array_node = ArrayNode(label="array_access", identifier=identifier, index=index)
+        array_node.start_pos = start_pos
+        array_node.end_pos = self.curr_tkn.position
+        return array_node
 
     def parse_array_assignment(self) -> ArrayNode:
         """ArrayAssignment: ID index ASSIGN expr"""
         self.__log("<ArrayAssign>")
 
+        start_pos = self.curr_tkn.position
         identifier = self.curr_tkn.word
         self.__expect_and_consume(TokenType.ID)
         index = self.parse_index()
@@ -432,9 +450,12 @@ class Parser:
         expression = self.parse_expr()
 
         self.__log("</ArrayAssign>")
-        return ArrayNode(
+        array_node = ArrayNode(
             label="array_update", identifier=identifier, index=index, value=expression
         )
+        array_node.start_pos = start_pos
+        array_node.end_pos = self.curr_tkn.position
+        return array_node
 
     def parse_assignment(self) -> AssignmentNode:
         """Assignment: ID ASSIGN (expr | callable)"""
@@ -462,6 +483,7 @@ class Parser:
     def parse_while(self) -> WhileNode:
         """WhileStatement: WHILE ( expr ) { ( body | BREAK | CONTINUE) }"""
         self.__log("<While>")
+        start_pos = self.curr_tkn.position
 
         right_node = None
         self.__expect_and_consume(TokenType.WHILE)
@@ -475,11 +497,15 @@ class Parser:
         self.__expect_and_consume(TokenType.RBRACE)
 
         self.__log("</While>")
-        return WhileNode(left_node, right_node)
+        while_node = WhileNode(left_node, right_node)
+        while_node.start_pos = start_pos
+        while_node.end_pos = self.curr_tkn.position
+        return while_node
 
     def parse_for(self) -> ForNode:
         """ForStatement: FOR ID TO ( NUM, NUM ) { body }"""
         self.__log("<For>")
+        start_pos = self.curr_tkn.position
 
         body = None
         self.__expect_and_consume(TokenType.FOR)
@@ -499,11 +525,15 @@ class Parser:
         self.__expect_and_consume(TokenType.RBRACE)
 
         self.__log("</For>")
-        return ForNode(identifier, range_start, range_end, body)
+        for_node = ForNode(identifier, range_start, range_end, body)
+        for_node.start_pos = start_pos
+        for_node.end_pos = self.curr_tkn.position
+        return for_node
 
     def parse_if(self) -> IfNode:
         """IfStatement: IF ( expr ) { body }"""
         self.__log("<If>")
+        start_pos = self.curr_tkn.position
 
         body_node = None
         self.__expect_and_consume(TokenType.IF)
@@ -525,11 +555,14 @@ class Parser:
             if_node.set_else_body(self.parse_else())
 
         self.__log("</If>")
+        if_node.start_pos = start_pos
+        if_node.end_pos = self.curr_tkn.position
         return if_node
 
     def parse_elif(self) -> ElifNode:
         """ElifStatement: ELIF ( expr ) { body }"""
         self.__log("<Elif>")
+        start_pos = self.curr_tkn.position
         body_node = None
 
         self.__expect_and_consume(TokenType.ELIF)
@@ -543,7 +576,10 @@ class Parser:
         self.__expect_and_consume(TokenType.RBRACE)
 
         self.__log("</Elif>")
-        return ElifNode(expr_node, body_node)
+        elif_node = ElifNode(expr_node, body_node)
+        elif_node.start_pos = start_pos
+        elif_node.end_pos = self.curr_tkn.position
+        return elif_node
 
     def parse_else(self) -> Optional[Node]:
         """ElseStatement: ELSE { body }"""
@@ -551,7 +587,6 @@ class Parser:
 
         body = None
         self.__expect_and_consume(TokenType.ELSE)
-
         self.__expect_and_consume(TokenType.LBRACE)
         if TokenType.conditional_stmt_start(self.curr_tkn):
             body = self.parse_conditional_body()
@@ -563,10 +598,9 @@ class Parser:
     def parse_return(self) -> ReturnNode:
         """ReturnStatement: RETURN expr?"""
         self.__log("<Return>")
-
         start_pos = self.curr_tkn.position
-        self.__expect_and_consume(TokenType.RET)
 
+        self.__expect_and_consume(TokenType.RET)
         return_node = ReturnNode()
         if (
             TokenType.expression(self.curr_tkn)
@@ -582,7 +616,6 @@ class Parser:
     def parse_print(self, print_ln=False) -> PrintNode:
         """PrintStatement: PRINT args"""
         self.__log("<Print>")
-
         start_pos = self.curr_tkn.position
 
         # PrintlnStatement: PRINTLN args
@@ -603,8 +636,8 @@ class Parser:
     def parse_input(self) -> InputNode:
         """InputStatement: INPUT (STR)?"""
         self.__log("<Input>")
-
         start_pos = self.curr_tkn.position
+
         self.__expect_and_consume(TokenType.INPUT)
         self.__expect_and_consume(TokenType.LPAR)
 
@@ -623,7 +656,6 @@ class Parser:
     def parse_params(self) -> ArgsNode:
         """params: param (',' param)*"""
         self.__log("<Params>")
-
         params = ArgsNode()
         params.start_pos = self.curr_tkn.position
 
@@ -660,7 +692,6 @@ class Parser:
     def parse_args(self) -> ArgsNode:
         """args: arg (',' arg)*"""
         self.__log("<Args>")
-
         args = ArgsNode()
         args.start_pos = self.curr_tkn.position
 
@@ -692,7 +723,6 @@ class Parser:
     def parse_callable(self) -> ExprNode:
         """callable: PRINT | INPUT | ID args"""
         self.__log("<Callable>")
-        start_pos = self.curr_tkn.position
 
         is_print_token = self.__expected_token(TokenType.PRINT)
         is_print_token |= self.__expected_token(TokenType.PRINTLN)
@@ -713,12 +743,13 @@ class Parser:
             )
 
         self.__log("</Callable>")
-        call_node.start_pos = start_pos
-        call_node.end_pos = self.curr_tkn.position
         return call_node
 
     def parse_file_IO(self) -> FileNode:
         """File IO: FILE_OPEN | FILE_CLOSE | FILE_READ | FILE_READLINE | FILE_WRITE | FILE_WRITELINE"""
+        self.__log("<FileIO>")
+        start_pos = self.curr_tkn.position
+
         match self.curr_tkn.type:
             case TokenType.FILE_CLOSE:
                 self.__expect_and_consume(TokenType.FILE_CLOSE)
@@ -782,12 +813,14 @@ class Parser:
                     self.curr_tkn.line_num,
                     self.curr_tkn.column_num,
                 )
+        self.__log("</FileIO>")
+        file_node.start_pos = start_pos
+        file_node.end_pos = self.curr_tkn.position
         return file_node
 
     def parse_expr(self) -> ExprNode:
         """expr: simpleExpr | simpleExpr relationalOp simpleExpr"""
         self.__log("<Expr>")
-
         expr_node = ExprNode()
         expr_node.start_pos = self.curr_tkn.position
 
@@ -811,8 +844,8 @@ class Parser:
     def parse_simple_expr(self) -> ExprNode:
         """simpleExpr: term | term addOp simpleExpr"""
         self.__log("<SimpleExpr>")
-
         start_pos = self.curr_tkn.position
+
         if not TokenType.term(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
@@ -835,8 +868,8 @@ class Parser:
     def parse_term(self) -> ExprNode:
         """term: factor | factor mulOp terme"""
         self.__log("<Term>")
-
         start_pos = self.curr_tkn.position
+
         if not TokenType.factor(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
