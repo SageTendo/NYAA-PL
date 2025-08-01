@@ -95,13 +95,11 @@ class ArraySymbol(Symbol):
 class FileSymbol(Symbol):
     """Represent a file object"""
 
-    def __init__(self, name: str, file: TextIO, writeable: bool):
+    def __init__(self, name: str, file: TextIO):
         """
         Initializes a new file symbol
         @param name: The name of the identifier that references the file
         @param file: The file object
-        @param writeable: Whether the file is writeable
         """
         super().__init__(name)
         self.file = file
-        self.writeable = writeable

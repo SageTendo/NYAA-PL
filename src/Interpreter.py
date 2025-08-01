@@ -1,6 +1,5 @@
 import sys
-from pathlib import Path
-from typing import Optional
+from typing import Optional, TextIO
 
 from src.core.ASTNodes import (
     FileNode,
@@ -482,19 +481,12 @@ class Interpreter:
                     "Valid Modes: 'r' (Read), 'w' (Write), 'a' (Append)"
                 )
 
-            writeable = True if access_mode in ["w", "a"] else False
-            path = Path(filepath)
-            if writeable:
-                path.parent.mkdir(parents=True, exist_ok=True)
-            elif not path.exists() or not path.is_file():
-                raise ValueError(f"{filepath} is not a valid file path")
-
             try:
                 file = open(filepath, access_mode)
             except IOError:
                 raise
 
-            file_object = RunTimeObject("file", FileSymbol(filepath, file, writeable))
+            file_object = RunTimeObject("file", FileSymbol(filepath, file))
             self.current_env.insert_symbol(
                 node.identifier, VarSymbol(node.identifier, file_object)
             )
@@ -507,6 +499,108 @@ class Interpreter:
                 node.start_pos,
                 node.end_pos,
             )
+
+    def visit_file_write(self, node: FileNode):
+        """Interprets file write operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        write_buffer_runtime_object = node.write_buffer.accept(self)
+        buffer = write_buffer_runtime_object.value
+
+        try:
+            if file.closed:
+                raise IOError("Cannot write to a closed file")
+
+            if not file.writable():
+                raise IOError("File is not writeable")
+
+            if not isinstance(buffer, str) and not isinstance(buffer, list):
+                raise IOError(f"Expected a string or array got {type(buffer)}")
+
+            if isinstance(buffer, list):
+                for item in buffer:
+                    file.write(str(item.value))
+            else:
+                file.write(buffer)
+
+            if node.is_write_line:
+                file.write("\n")
+
+            log = f"Message '{buffer}' written to file {file.name}"
+            self.__log(success_msg(log))
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                e.args[0],
+                node.start_pos,
+                node.end_pos,
+            )
+
+    def visit_file_read(self, node: FileNode):
+        """Interprets file read operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        try:
+            if file.closed:
+                raise IOError("Cannot read from a closed file")
+
+            if not file.readable():
+                raise IOError("File is not readable")
+
+            if node.n_chars_to_read:
+                buffer = file.read(node.n_chars_to_read.accept(self).value)
+            else:
+                buffer = file.read()
+
+            log = f"Message '{buffer}' read from file {file.name}"
+            self.__log(success_msg(log))
+            return RunTimeObject("string", buffer)
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+    def visit_file_readline(self, node: FileNode):
+        """Interprets file read line operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        try:
+            if file.closed:
+                raise IOError("Cannot read from a closed file")
+
+            if not file.readable():
+                raise IOError("File is not readable")
+
+            buffer = file.readline()
+            log = f"Message '{buffer}' read from file {file.name}"
+            self.__log(success_msg(log))
+            return RunTimeObject("string", buffer)
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+    def visit_file_close(self, node: FileNode):
+        """Interprets file close operation"""
+        runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol: FileSymbol = self.__test_for_identifier(runtime_object).value
+        file = file_symbol.file
+
+        try:
+            file.close()
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+        log = f"File {file.name} closed"
+        self.__log(success_msg(log))
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""
