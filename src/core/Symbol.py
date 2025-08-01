@@ -1,3 +1,5 @@
+from typing import TextIO
+
 from src.core.ASTNodes import BodyNode
 from src.core.RuntimeObject import RunTimeObject
 
@@ -88,3 +90,16 @@ class ArraySymbol(Symbol):
         super().__init__(name)
         self.values = values
         self.size = size
+
+
+class FileSymbol(Symbol):
+    """Represent a file object"""
+
+    def __init__(self, name: str, file: TextIO):
+        """
+        Initializes a new file symbol
+        @param name: The name of the identifier that references the file
+        @param file: The file object
+        """
+        super().__init__(name)
+        self.file = file
