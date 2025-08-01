@@ -9,6 +9,7 @@ uWu_nyaa() => {
     yomu_ln()
 
     buff_c => {1, 2, 3}
+    yomu_ln(buff_c)
     for i => (0, 3) {
         yomu_ln(buff_c[i])
     }

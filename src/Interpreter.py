@@ -1,9 +1,8 @@
-from csv import Error
 import sys
-from typing import Optional
-
+from typing import Optional, TextIO
 
 from src.core.ASTNodes import (
+    FileNode,
     Node,
     PrintNode,
     BodyNode,
@@ -34,7 +33,8 @@ from src.core.ASTNodes import (
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
 from src.core.RuntimeObject import RunTimeObject
-from src.core.Symbol import ArraySymbol
+from src.core.Symbol import VarSymbol, FunctionSymbol, FileSymbol
+from src.core.Token import Position
 from src.utils.Constants import WARNING
 from src.utils.ErrorHandler import (
     throw_unary_type_err,
@@ -47,7 +47,7 @@ from src.utils.ErrorHandler import (
 )
 
 MAX_VISIT_DEPTH = 5470
-INTERNAL_RECURSION_LIMIT = 1010
+INTERNAL_STACK_SIZE = 1010
 SYS_RECURSION_LIMIT = 1000000
 
 
@@ -64,12 +64,12 @@ class Interpreter:
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
-        self.__recursion_count = 0  # Keep track of number of recursive function calls
+        self.__stack_pointer = 0  # Keep track of number of recursive function calls
         sys.setrecursionlimit(SYS_RECURSION_LIMIT)
 
         # Error handling
-        self.node_start_pos = (-1, -1)
-        self.node_end_pos = (-1, -1)
+        self.node_start_pos = Position(line=-1, col=-1)
+        self.node_end_pos = Position(line=-1, col=-1)
 
     def __log(self, message: str) -> None:
         if self.__verbose:
@@ -83,7 +83,7 @@ class Interpreter:
         try:
             return ast.accept(self)
         except RecursionError as e:
-            print(f"{emoji()}\n" f"Visitor Error:", e, file=sys.stderr)
+            print(f"{emoji()}\nVisitor Error:", e, file=sys.stderr)
         except InterpreterError as e:
             print(e, file=sys.stderr)
 
@@ -152,7 +152,13 @@ class Interpreter:
                         node.args.start_pos,
                         node.args.end_pos,
                     )
-        self.current_env.insert_function(node.identifier, params, node.body)  # type: ignore
+
+        function_obj = RunTimeObject(
+            "function", value=FunctionSymbol(node.identifier, params, node.body)
+        )
+        self.current_env.insert_symbol(
+            node.identifier, VarSymbol(node.identifier, function_obj)
+        )
 
     def visit_body(self, node: BodyNode):
         """
@@ -277,7 +283,10 @@ class Interpreter:
         iterator_runtime_object = RunTimeObject(
             label="number", value=0, value_type="int"
         )
-        self.current_env.insert_variable(node.identifier.value, iterator_runtime_object)  # type: ignore
+        self.current_env.insert_symbol(
+            node.identifier.value,
+            VarSymbol(node.identifier.value, iterator_runtime_object),
+        )
 
         # incrementer to determine direction of iteration
         incrementer = 1 if range_start < range_end else -1
@@ -295,17 +304,13 @@ class Interpreter:
         if node.size:
             array_size = self.__test_for_identifier(node.size.accept(self)).value
             values = [RunTimeObject("null", value="null")] * int(array_size)
-
         elif node.initial_values:
-            array_size = len(node.initial_values)
             values = [value.accept(self) for value in node.initial_values]
-
         else:
-            array_size = -1
             values = []
 
-        array_symbol = ArraySymbol(identifier, array_size, values)
-        self.current_env.insert_array(identifier, array_symbol)  # type: ignore
+        array_symbol = RunTimeObject(identifier, values)
+        self.current_env.insert_symbol(identifier, VarSymbol(identifier, array_symbol))
 
     def visit_array_access(self, node: ArrayNode):
         """
@@ -322,9 +327,9 @@ class Interpreter:
 
         identifier = node.identifier
         index = self.__test_for_identifier(node.index.accept(self)).value
-        array_symbol = self.current_env.lookup_array(identifier)  # type: ignore
+        array = self.current_env.lookup_symbol(identifier).value
 
-        if index < 0 or index >= len(array_symbol.values):
+        if index < 0 or index >= len(array):
             raise InterpreterError(
                 ErrorType.RUNTIME,
                 "Array index out of bounds",
@@ -332,7 +337,7 @@ class Interpreter:
                 node.end_pos,
             )
 
-        return array_symbol.values[index]
+        return array[index]
 
     def visit_array_update(self, node: ArrayNode):
         """
@@ -351,11 +356,11 @@ class Interpreter:
             )
 
         identifier = node.identifier
-        index = self.__test_for_identifier(node.index.accept(self)).value  # type: ignore
+        index = self.__test_for_identifier(node.index.accept(self)).value
         value_runtime = node.value.accept(self)
 
-        array_symbol = self.current_env.lookup_array(identifier)  # type: ignore
-        if int(index) < 0 or int(index) >= len(array_symbol.values):
+        array_symbol = self.current_env.lookup_symbol(identifier).value
+        if int(index) < 0 or int(index) >= len(array_symbol):
             raise InterpreterError(
                 ErrorType.RUNTIME,
                 "Array index out of bounds",
@@ -363,7 +368,7 @@ class Interpreter:
                 node.end_pos,
             )
 
-        array_symbol.values[index] = RunTimeObject(
+        array_symbol[index] = RunTimeObject(
             value_runtime.label, value_runtime.value, value_runtime.type
         )
 
@@ -374,9 +379,14 @@ class Interpreter:
         """
         lhs = node.left.accept(self)
         rhs = node.right.accept(self)
-        self.current_env.insert_variable(  # type: ignore
-            lhs.value, RunTimeObject(rhs.label, rhs.value, rhs.type)
-        )
+
+        if rhs.label in "function":
+            self.current_env.insert_symbol(lhs.value, VarSymbol(lhs.value, rhs))
+        else:
+            runtime_object = RunTimeObject(rhs.label, rhs.value, rhs.type)
+            self.current_env.insert_symbol(
+                lhs.value, VarSymbol(lhs.value, runtime_object)
+            )
 
     def visit_call(self, node: CallNode):
         """
@@ -385,14 +395,24 @@ class Interpreter:
         """
         self.check_for_stack_overflow(node)
 
+        function_symbol = self.current_env.lookup_symbol(node.identifier)
+        if function_symbol.label != "function":
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                f"'{node.identifier}' is not a function and cannot be called",
+                node.start_pos,
+                node.end_pos,
+            )
+
+        self.__stack_pointer += 1
         local_env = Environment(
             name=node.identifier,
-            level=self.current_env.level + 1,  # type: ignore
+            level=self.current_env.level + 1,
             parent=self.global_env,
         )
         old_env = self.current_env
-        function_symbol = self.current_env.lookup_function(node.identifier)  # type: ignore
 
+        function_symbol = function_symbol.value
         if node.args:
             function_args = node.args.accept(self)
             if len(function_args) != len(function_symbol.params):
@@ -405,10 +425,9 @@ class Interpreter:
                     node.args.end_pos,
                 )
 
-            # assing arg values to local variables
+            # assign arg values to local variables
             for i, param in enumerate(function_symbol.params):
-                local_env.insert_variable(param, function_args[i])
-
+                local_env.insert_symbol(param, VarSymbol(param, function_args[i]))
         self.current_env = local_env
 
         # Check cache for previously stored value, else walk through the function body
@@ -419,7 +438,7 @@ class Interpreter:
             cache_mem.put(env_hash, result)
 
         self.current_env = old_env
-        self.__recursion_count -= 1
+        self.__stack_pointer -= 1
         return result
 
     @staticmethod
@@ -432,14 +451,156 @@ class Interpreter:
         """Interprets a print statement to the console"""
         args = node.args.accept(self)
         for i, arg in enumerate(args):
+            spacing = " " if i < len(args) - 1 else ""
             runtime_value = arg.value
-            if i < len(args) - 1:
-                print(runtime_value, end=" ")
-            else:
-                print(runtime_value, end="")
+            print(runtime_value, end=spacing)
 
         if node.println:
             print()
+
+    def visit_file_open(self, node: FileNode):
+        """Interprets file open operation"""
+        try:
+            if not node.filepath:
+                raise ValueError("File path must be provided...")
+            elif not node.access_mode:
+                raise ValueError("File access mode must be provided...")
+
+            filepath_object = node.filepath.accept(self)
+            access_mode_object = node.access_mode.accept(self)
+            if not isinstance(filepath_object.value, str):
+                raise TypeError("File path must be a string...")
+            elif not isinstance(access_mode_object.value, str):
+                raise TypeError("File access mode must be a string...")
+
+            filepath = filepath_object.value
+            access_mode = access_mode_object.value.lower()
+            if access_mode not in ["r", "w", "a"]:
+                raise ValueError(
+                    "Invalid file access mode provided...\n"
+                    "Valid Modes: 'r' (Read), 'w' (Write), 'a' (Append)"
+                )
+
+            try:
+                file = open(filepath, access_mode)
+            except IOError:
+                raise
+
+            file_object = RunTimeObject("file", FileSymbol(filepath, file))
+            self.current_env.insert_symbol(
+                node.identifier, VarSymbol(node.identifier, file_object)
+            )
+            log = f"File {filepath} opened with access mode '{access_mode}'"
+            self.__log(success_msg(log))
+        except (ValueError, TypeError, IOError) as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                e.args[0],
+                node.start_pos,
+                node.end_pos,
+            )
+
+    def visit_file_write(self, node: FileNode):
+        """Interprets file write operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        write_buffer_runtime_object = node.write_buffer.accept(self)
+        buffer = write_buffer_runtime_object.value
+
+        try:
+            if file.closed:
+                raise IOError("Cannot write to a closed file")
+
+            if not file.writable():
+                raise IOError("File is not writeable")
+
+            if not isinstance(buffer, str) and not isinstance(buffer, list):
+                raise IOError(f"Expected a string or array got {type(buffer)}")
+
+            if isinstance(buffer, list):
+                for item in buffer:
+                    file.write(str(item.value))
+            else:
+                file.write(buffer)
+
+            if node.is_write_line:
+                file.write("\n")
+
+            log = f"Message '{buffer}' written to file {file.name}"
+            self.__log(success_msg(log))
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                e.args[0],
+                node.start_pos,
+                node.end_pos,
+            )
+
+    def visit_file_read(self, node: FileNode):
+        """Interprets file read operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        try:
+            if file.closed:
+                raise IOError("Cannot read from a closed file")
+
+            if not file.readable():
+                raise IOError("File is not readable")
+
+            if node.n_chars_to_read:
+                buffer = file.read(node.n_chars_to_read.accept(self).value)
+            else:
+                buffer = file.read()
+
+            log = f"Message '{buffer}' read from file {file.name}"
+            self.__log(success_msg(log))
+            return RunTimeObject("string", buffer)
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+    def visit_file_readline(self, node: FileNode):
+        """Interprets file read line operation"""
+        file_runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol = self.__test_for_identifier(file_runtime_object).value
+
+        file: TextIO = file_symbol.file
+        try:
+            if file.closed:
+                raise IOError("Cannot read from a closed file")
+
+            if not file.readable():
+                raise IOError("File is not readable")
+
+            buffer = file.readline()
+            log = f"Message '{buffer}' read from file {file.name}"
+            self.__log(success_msg(log))
+            return RunTimeObject("string", buffer)
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+    def visit_file_close(self, node: FileNode):
+        """Interprets file close operation"""
+        runtime_object = self.current_env.lookup_symbol(node.identifier)
+        file_symbol: FileSymbol = self.__test_for_identifier(runtime_object).value
+        file = file_symbol.file
+
+        try:
+            file.close()
+        except IOError as e:
+            raise InterpreterError(
+                ErrorType.RUNTIME, e.args[0], node.start_pos, node.end_pos
+            )
+
+        log = f"File {file.name} closed"
+        self.__log(success_msg(log))
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""
@@ -620,10 +781,7 @@ class Interpreter:
                 return RunTimeObject("number", -right_factor.value)
             except TypeError as e:
                 raise InterpreterError(
-                    ErrorType.TYPE,
-                    e.args[0],
-                    self.node_start_pos,
-                    self.node_end_pos,
+                    ErrorType.TYPE, e.args[0], self.node_start_pos, self.node_end_pos
                 )
         return left_factor
 
@@ -655,24 +813,23 @@ class Interpreter:
         self, runtime_object: RunTimeObject, current_scope=False
     ) -> RunTimeObject:
         """Checks if the runtime object is an identifier, and returns its value"""
-        if runtime_object.label != "identifier":
-            return runtime_object
-
-        return self.current_env.lookup_variable(  # type: ignore
-            runtime_object.value, lookup_within_scope=current_scope
-        )
+        if runtime_object.label == "identifier":
+            return self.current_env.lookup_symbol(
+                runtime_object.value, lookup_within_scope=current_scope
+            )
+        return runtime_object
 
     def check_for_stack_overflow(self, node: CallNode):
         """
-        Checks if the recursion depth is exceeded.
-        @raise InterpreterError: If the recursion depth is exceeded
+        Checks if the stack pointer has exceeded the internal stack size.
+        @raise InterpreterError: If the stack pointer has exceeded the internal stack size
         """
-        if self.__recursion_count > INTERNAL_RECURSION_LIMIT:
-            self.__recursion_count = 0
+        if self.__stack_pointer > INTERNAL_STACK_SIZE:
+            self.__stack_pointer = 0
             raise InterpreterError(
                 ErrorType.RECURSION,
                 "Ara Ara!!!\nNon-kawaii recursion depth exceeded",
                 node.start_pos,
                 node.end_pos,
             )
-        self.__recursion_count += 1
+        self.__stack_pointer += 1

@@ -2,6 +2,7 @@ import os.path
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 from random import randint, choice
 from unittest import TestCase
 
@@ -38,7 +39,7 @@ class TestNyaa(TestCase):
         for file in os.listdir(test_dir):
             try:
                 print(f"[Lexer] Running test on: {file}")
-                self.lexer.analyze_src_file(test_dir + file)
+                self.lexer.analyze_src_file(Path(test_dir + file))
 
                 token = Token()
                 while token.type != TokenType.ENDMARKER:
@@ -69,7 +70,7 @@ class TestNyaa(TestCase):
 
             try:
                 print(f"[Lexer Error] Running test on: {file}")
-                self.lexer.analyze_src_file(test_dir + file)
+                self.lexer.analyze_src_file(Path(test_dir + file))
 
                 token = Token()
                 while token.type != TokenType.ENDMARKER:

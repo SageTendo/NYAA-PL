@@ -47,8 +47,8 @@ class RunTimeObject:
 
     def __eq__(self, other) -> bool:
         """
-        Checks if the runtime object is equal to another runtimeobject
-        @param other: The other runtimeobject to compare with
+        Checks if the runtime object is equal to another runtime object
+        @param other: The other runtime object to compare with
         @return: True if the runtime objects are equal, false otherwise
         """
         return (

@@ -46,3 +46,10 @@ nai
 "\n"
 "\t"
 "\\"
+f_open
+f_close
+f_read
+f_readline
+f_write
+f_writeline
+f_EOF

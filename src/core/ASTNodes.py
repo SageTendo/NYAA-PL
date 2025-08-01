@@ -2,14 +2,14 @@ import json
 from typing import Optional
 
 from src.core.CacheMemory import cache_mem
-from src.core.Token import Token
+from src.core.Token import Token, Position
 
 
 class Node:
     def __init__(self, node_label: str):
         self.label = node_label
-        self.start_pos: tuple = (-1, -1)
-        self.end_pos: tuple = (-1, -1)
+        self.start_pos: Position = Position(line=-1, col=-1)
+        self.end_pos: Position = Position(line=-1, col=-1)
 
     def accept(self, visitor):
         """Invokes visitor method on node"""
@@ -17,33 +17,31 @@ class Node:
             return cached_visit(self)
         return visitor.visit(self)
 
+    @property
     def to_json(self) -> dict:
         """Represent AST/Node as dictionary"""
-        node_map = self.__dict__.copy()
-        node_map["start_pos"] = self.start_pos
-        node_map["end_pos"] = self.end_pos
-
-        for k, v in node_map.items():
+        json_data = {}
+        for k, v in self.__dict__.items():
             if v is None:
                 continue
 
-            node_map[k] = "true" if v is True else "false"
-
-            if isinstance(v, list):
-                node_map[k] = [item.to_json() for item in v]
-
-            if isinstance(v, dict):
-                node_map[k] = {}
-                for key, value in v.items():
-                    if value:
-                        node_map[k][key] = value.to_json()
-
             if isinstance(v, Node):
-                node_map[k] = v.to_json()
-        return node_map
+                json_data[k] = v.to_json
+            elif isinstance(v, Position):
+                json_data[k] = (v.line_number, v.column_number)
+            elif isinstance(v, bool):
+                json_data[k] = "true" if v is True else "false"
+            elif isinstance(v, list):
+                json_data[k] = [item.to_json for item in v]
+            elif isinstance(v, dict):
+                json_data[k] = {}
+                json_data[k] = {key: value.to_json for key, value in v.items() if value}
+            else:
+                json_data[k] = v
+        return json_data
 
     def encode_json(self) -> str:
-        return json.dumps(self.to_json(), indent=2)
+        return json.dumps(self.to_json, indent=2)
 
 
 class ConditionalNode(Node):
@@ -261,6 +259,27 @@ class ArrayNode(Node):
         self.initial_values = initial_values
 
 
+class FileNode(ExprNode):
+    def __init__(
+        self,
+        label: str,
+        identifier: Optional[str] = None,
+        filepath: Optional[ExprNode] = None,
+        access_mode: Optional[ExprNode] = None,
+        n_chars_to_read: Optional[ExprNode] = None,
+        write_buffer: Optional[ExprNode | ArrayNode] = None,
+        is_write_line: bool = False,
+    ) -> None:
+        ExprNode.__init__(self, label)
+        self.identifier = identifier
+        self.filepath = filepath
+        self.access_mode = access_mode
+        self.filepath = filepath
+        self.n_chars_to_read = n_chars_to_read
+        self.write_buffer = write_buffer
+        self.is_write_line = is_write_line
+
+
 class IdentifierNode(ExprNode):
     def __init__(self, token):
         super().__init__("identifier")
@@ -274,9 +293,6 @@ class NumericLiteralNode(ExprNode):
         self.type = token.type
         self.value = token.number
 
-    def to_json(self):
-        return {"type": str(self.type), "value": str(self.value)}
-
 
 class StringLiteralNode(ExprNode):
     def __init__(self, token):
@@ -288,9 +304,6 @@ class BooleanNode(ExprNode):
     def __init__(self, boolean_value):
         super().__init__("boolean_literal")
         self.value = boolean_value
-
-    def to_json(self):
-        return {"value": str(self.value)}
 
 
 class OperatorNode(Node):
