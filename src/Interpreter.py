@@ -29,6 +29,7 @@ from src.core.ASTNodes import (
     BreakNode,
     ContinueNode,
     ArrayNode,
+    CharReprNode,
 )
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
@@ -451,7 +452,7 @@ class Interpreter:
         """Interprets a print statement to the console"""
         args = node.args.accept(self)
         for i, arg in enumerate(args):
-            spacing = " " if i < len(args) - 1 else ""
+            spacing = " " if (i < len(args) - 1 and len(args) > 1) else ""
             runtime_value = arg.value
             print(runtime_value, end=spacing)
 
@@ -601,6 +602,28 @@ class Interpreter:
 
         log = f"File {file.name} closed"
         self.__log(success_msg(log))
+
+    def visit_char_repr(self, node: CharReprNode) -> RunTimeObject:
+        """Interprets an ascii code and returns the character representation"""
+        expression: RunTimeObject = node.expr.accept(self)
+        if expression.label != "number":
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Expected a number representing a unicode character, got "
+                + expression.label,
+                node.start_pos,
+                node.end_pos,
+            )
+
+        if expression.value < 0 or expression.value > 0x10FFFF:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Expected a unicode character representation between 0 and 0x10FFFF, got "
+                + str(expression.value),
+                node.start_pos,
+                node.end_pos,
+            )
+        return RunTimeObject("string", chr(expression.value))
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""

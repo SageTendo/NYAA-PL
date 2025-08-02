@@ -64,7 +64,7 @@ kawaii interpret() => {
             } baka { tape[pointer] wa 255 }
         } nandesuka (byte == ".") {
             val wa tape[pointer]
-            yomu_ln(val)
+            yomu(to_char(val))
         } nandesuka (byte == ",") {
             val wa ohayo("user input: ")
             tape[pointer] wa val
