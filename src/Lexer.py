@@ -75,8 +75,9 @@ class Lexer:
         while self.__char.isspace():
             self.__next_char()
 
-        self.__token_position.line_number = self.__line_number
-        self.__token_position.column_number = self.__column_number
+        self.__token_position = Position(
+            line=self.__line_number, col=self.__column_number
+        )
 
         if self.__char != EOF:
             if self.__char.isalpha() or self.__char == "_":
