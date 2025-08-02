@@ -29,9 +29,9 @@ class TestNyaa(TestCase):
     @staticmethod
     def print_header(header):
         header = f"Testing {header}"
-        print(f"#" * len(header))
+        print("#" * len(header))
         print(header)
-        print(f"#" * len(header), flush=True)
+        print("#" * len(header), flush=True)
 
     def test_lexer(self):
         self.print_header("Lexer")
@@ -82,9 +82,7 @@ class TestNyaa(TestCase):
                 e = str(e).lower()
                 if expected not in e and len(expected) > 0:
                     print(f"{ERROR}  Failed{ENDC}", e, file=sys.stderr)
-                    self.fail(
-                        f"EXPECTED:\n" f"    {expected}\n" f"ACTUAL:\n" f"    {e}"
-                    )
+                    self.fail(f"EXPECTED:\n    {expected}\nACTUAL:\n    {e}")
 
                 print(f"{SUCCESS}  Passed{ENDC}")
             finally:
@@ -132,11 +130,11 @@ class TestNyaa(TestCase):
                 print(f"{SUCCESS}  Passed{ENDC}")
             else:
                 expected_header = "EXPECTED OUTPUT:"
-                print(f"{WARNING}{expected_header}", f"-" * len(expected_header))
+                print(f"{WARNING}{expected_header}", "-" * len(expected_header))
                 print(f"{expected}{ENDC}")
 
                 actual_header = "ACTUAL OUTPUT:"
-                print(f"{WARNING}{actual_header}", f"-" * len(actual_header))
+                print(f"{WARNING}{actual_header}", "-" * len(actual_header))
                 if proc.stderr:
                     print(f"{WARNING}{proc.stderr.strip()}{ENDC}")
                 else:
@@ -173,9 +171,7 @@ class TestNyaa(TestCase):
             expected = expected.lower().strip()
             if expected not in result and len(expected) > 0:
                 print(f"{ERROR}  Failed{ENDC}")
-                self.fail(
-                    f"EXPECTED:\n" f"    {expected}\n" f"ACTUAL:\n" f"    {proc.stderr}"
-                )
+                self.fail(f"EXPECTED:\n    {expected}\nACTUAL:\n    {proc.stderr}")
 
             print(f"{SUCCESS}  Passed{ENDC}")
 
@@ -291,12 +287,7 @@ class TestNyaa(TestCase):
 
             if proc.returncode != 0:
                 print(f"{ERROR}  Failed{ENDC}")
-                self.fail(
-                    f"EXPECTED:\n"
-                    f"    {proc.stderr}\n"
-                    f"ACTUAL:\n"
-                    f"    {proc.stdout}"
-                )
+                self.fail(f"EXPECTED:\n    {proc.stderr}\nACTUAL:\n    {proc.stdout}")
 
             print(f"{SUCCESS}  Passed{ENDC}")
         except Exception as e:

@@ -40,6 +40,7 @@ class TokenType(Enum):
     INPUT = auto()
     PRINT = auto()
     PRINTLN = auto()
+    GET_CHAR = auto()
 
     _BEGIN_FILE_IO_DEFINITIONS = auto()
     FILE_OPEN = auto()
@@ -279,5 +280,6 @@ RESERVED_WORDS = {
     "f_readline": TokenType.FILE_READLINE,
     "f_write": TokenType.FILE_WRITE,
     "f_writeline": TokenType.FILE_WRITELINE,
-    "f_EOF": TokenType.FILE_EOF,
+    "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
+    "to_char": TokenType.GET_CHAR,
 }
