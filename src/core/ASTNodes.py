@@ -198,6 +198,12 @@ class CallNode(ExprNode):
         self.args = args
 
 
+class CharReprNode(ExprNode):
+    def __init__(self, expr):
+        super().__init__("char_repr")
+        self.expr = expr
+
+
 class InputNode(ExprNode):
     def __init__(self, msg=None):
         super().__init__("input")
