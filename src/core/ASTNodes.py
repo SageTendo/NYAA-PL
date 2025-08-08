@@ -256,6 +256,7 @@ class ArrayNode(Node):
         size: Optional[ExprNode] = None,
         value: Optional[ExprNode] = None,
         initial_values: Optional[list[ExprNode]] = None,
+        string_value: Optional[ExprNode] = None,
     ):
         super().__init__(label)
         self.identifier = identifier
@@ -263,6 +264,7 @@ class ArrayNode(Node):
         self.size = size
         self.value = value
         self.initial_values = initial_values
+        self.string_value = string_value
 
 
 class FileNode(ExprNode):
