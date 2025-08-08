@@ -278,7 +278,7 @@ class Parser:
         self.__expect_and_consume(TokenType.TO)
 
         match self.curr_tkn.type:
-            case TokenType.LBRACE | TokenType.LBRACKET:
+            case TokenType.LBRACE | TokenType.LBRACKET | TokenType.STR_SPLIT:
                 pointer_node = self.parse_array_def(identifier=identifier)
             case TokenType.FILE_OPEN:
                 pointer_node = self.parse_file_open(identifier=identifier)
@@ -382,6 +382,8 @@ class Parser:
 
         size = None
         values: list[ExprNode] = []
+        string_value = None
+
         if self.__expected_token(TokenType.LBRACKET):
             self.__expect_and_consume(TokenType.LBRACKET)
             size = self.parse_simple_expr()
@@ -395,9 +397,30 @@ class Parser:
                     self.__expect_and_consume(TokenType.COMMA)
             self.__expect_and_consume(TokenType.RBRACE)
 
+        elif self.__expected_token(TokenType.STR_SPLIT):
+            self.__expect_and_consume(TokenType.STR_SPLIT)
+            self.__expect_and_consume(TokenType.LPAR)
+            if TokenType.callable(self.curr_tkn):
+                string_value = self.parse_callable()
+            elif self.__expected_token(TokenType.STR):
+                string_value = self.parse_expr()
+            self.__expect_and_consume(TokenType.RPAR)
+
+        else:
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "[LBRACKET or LBRACE or STR_SPLIT]",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
         self.__log("<ArrDef>")
         array_node = ArrayNode(
-            label="array_def", identifier=identifier, size=size, initial_values=values
+            label="array_def",
+            identifier=identifier,
+            size=size,
+            initial_values=values,
+            string_value=string_value,
         )
         array_node.start_pos = start_pos
         array_node.end_pos = self.curr_tkn.position

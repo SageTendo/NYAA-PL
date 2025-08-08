@@ -307,6 +307,11 @@ class Interpreter:
             values = [RunTimeObject("null", value="null")] * int(array_size)
         elif node.initial_values:
             values = [value.accept(self) for value in node.initial_values]
+        elif node.string_value:
+            string_value = node.string_value.accept(self)
+            values = [
+                RunTimeObject("string", value=char) for char in string_value.value
+            ]
         else:
             values = []
 
@@ -836,11 +841,12 @@ class Interpreter:
         self, runtime_object: RunTimeObject, current_scope=False
     ) -> RunTimeObject:
         """Checks if the runtime object is an identifier, and returns its value"""
-        if runtime_object.label == "identifier":
-            return self.current_env.lookup_symbol(
-                runtime_object.value, lookup_within_scope=current_scope
-            )
-        return runtime_object
+        if runtime_object.label != "identifier":
+            return runtime_object
+
+        return self.current_env.lookup_symbol(
+            runtime_object.value, lookup_within_scope=current_scope
+        )
 
     def check_for_stack_overflow(self, node: CallNode):
         """
