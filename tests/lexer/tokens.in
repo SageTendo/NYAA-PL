@@ -53,4 +53,4 @@ f_readline
 f_write
 f_writeline
 f_EOF
-to_char
+asChar

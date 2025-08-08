@@ -281,5 +281,5 @@ RESERVED_WORDS = {
     "f_write": TokenType.FILE_WRITE,
     "f_writeline": TokenType.FILE_WRITELINE,
     "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
-    "to_char": TokenType.GET_CHAR,
+    "asChar": TokenType.GET_CHAR,
 }
