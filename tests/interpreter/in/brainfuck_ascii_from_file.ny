@@ -79,7 +79,7 @@ uWu_nyaa() => {
     ##
     f => f_open("./resources/brainfuck/hello.bf", "r")
     program => split(f_read(f))
-    program_size wa 106
+    program_size wa len(program)
 
     ##
         Scan for loops and keep references to opening and closing positions

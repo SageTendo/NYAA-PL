@@ -42,6 +42,7 @@ class TokenType(Enum):
     PRINTLN = auto()
     GET_CHAR = auto()
     STR_SPLIT = auto()
+    LEN = auto()
 
     _BEGIN_FILE_IO_DEFINITIONS = auto()
     FILE_OPEN = auto()
@@ -284,4 +285,5 @@ RESERVED_WORDS = {
     "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
     "asChar": TokenType.GET_CHAR,
     "split": TokenType.STR_SPLIT,
+    "len": TokenType.LEN,
 }

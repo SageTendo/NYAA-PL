@@ -247,6 +247,12 @@ class FactorNode(ExprNode):
         self.right = right
 
 
+class LengthNode(ExprNode):
+    def __init__(self, expr):
+        super().__init__("length")
+        self.expr = expr
+
+
 class ArrayNode(Node):
     def __init__(
         self,

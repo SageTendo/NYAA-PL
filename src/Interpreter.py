@@ -30,6 +30,7 @@ from src.core.ASTNodes import (
     ContinueNode,
     ArrayNode,
     CharReprNode,
+    LengthNode,
 )
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
@@ -315,7 +316,7 @@ class Interpreter:
         else:
             values = []
 
-        array_symbol = RunTimeObject(identifier, values)
+        array_symbol = RunTimeObject("array", values)
         self.current_env.insert_symbol(identifier, VarSymbol(identifier, array_symbol))
 
     def visit_array_access(self, node: ArrayNode):
@@ -629,6 +630,18 @@ class Interpreter:
                 node.end_pos,
             )
         return RunTimeObject("string", chr(expression.value))
+
+    def visit_length(self, node: LengthNode) -> RunTimeObject:
+        """Interprets a length expression and returns the result of the operation"""
+        expression: RunTimeObject = node.expr.accept(self)
+        if expression.label != "string" and expression.label != "array":
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Expected a string or array, got " + expression.label,
+                node.start_pos,
+                node.end_pos,
+            )
+        return RunTimeObject("number", len(expression.value))
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""

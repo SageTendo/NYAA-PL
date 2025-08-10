@@ -33,6 +33,7 @@ from src.core.ASTNodes import (
     ArrayNode,
     FileNode,
     CharReprNode,
+    LengthNode,
 )
 from src.core.Token import Token
 from src.core.Types import TokenType
@@ -758,6 +759,8 @@ class Parser:
             call_node = self.parse_file_IO()
         elif self.__expected_token(TokenType.GET_CHAR):
             call_node = self.parse_char_repr()
+        elif self.__expected_token(TokenType.LEN):
+            call_node = self.parse_length()
         elif self.__expected_token(TokenType.ID):
             call_node = self.parse_func_call()
         else:
@@ -862,6 +865,23 @@ class Parser:
         expr_node = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
         return CharReprNode(expr_node)
+
+    def parse_length(self) -> LengthNode:
+        self.__expect_and_consume(TokenType.LEN)
+        self.__expect_and_consume(TokenType.LPAR)
+        if not self.__expected_token(TokenType.STR) and not self.__expected_token(
+            TokenType.ID
+        ):
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "STR or ID",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
+        expr_node = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+        return LengthNode(expr_node)
 
     def parse_expr(self) -> ExprNode:
         """expr: simpleExpr | simpleExpr relationalOp simpleExpr"""

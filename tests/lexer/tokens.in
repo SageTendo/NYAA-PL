@@ -54,3 +54,4 @@ f_write
 f_writeline
 f_EOF
 asChar
+len
