@@ -163,9 +163,7 @@ class Lexer:
                         token.type = TokenType.UN_ADD
                         self.__next_char()
                 elif self.__char == "-":
-                    # TODO: Handle subtraction and negation
                     token.type = TokenType.MINUS
-
                     self.__next_char()
                     if self.__char == "-":  # Check for decrement operator
                         token.type = TokenType.UN_SUB
