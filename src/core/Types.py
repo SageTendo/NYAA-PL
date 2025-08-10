@@ -117,7 +117,6 @@ class TokenType(Enum):
     _BEGIN_UNARY_OPERATOR_DEFINITIONS = auto()
     # Negations
     NOT = auto()
-    NEG = auto()  # -
     _END_UNARY_OPERATOR_DEFINITIONS = auto()
     LPAR = auto()  # (
     _END_FACTOR_DEFINITIONS = auto()
@@ -185,11 +184,14 @@ class TokenType(Enum):
 
     @classmethod
     def factor(cls, token: "Token") -> bool:
-        return cls.token_within(
+        result = cls.token_within(
             token,
             TokenType._BEGIN_FACTOR_DEFINITIONS,
             TokenType._END_FACTOR_DEFINITIONS,
         )
+        # Handle negative numbers
+        result |= token.type == TokenType.MINUS
+        return result
 
     @classmethod
     def bin_op(cls, token: "Token") -> bool:
@@ -250,40 +252,3 @@ class TokenType(Enum):
 
     def __repr__(self) -> str:
         return self.name
-
-
-RESERVED_WORDS = {
-    "uWu_nyaa": TokenType.MAIN,
-    "yomu": TokenType.PRINT,
-    "ohayo": TokenType.INPUT,
-    "daijoubu": TokenType.WHILE,
-    "nani": TokenType.IF,
-    "nandesuka": TokenType.ELIF,
-    "baka": TokenType.ELSE,
-    "yamete": TokenType.BREAK,
-    "motto": TokenType.CONTINUE,
-    "kawaii": TokenType.DEF,
-    "HAI": TokenType.TRUE,
-    "IIE": TokenType.FALSE,
-    "wa": TokenType.ASSIGN,
-    "modoru": TokenType.RET,
-    "purasu": TokenType.PLUS,
-    "mainasu": TokenType.MINUS,
-    "purodakuto": TokenType.MULTIPLY,
-    "supuritto": TokenType.DIVIDE,
-    "ando": TokenType.AND,
-    "matawa": TokenType.OR,
-    "nai": TokenType.NOT,
-    "for": TokenType.FOR,
-    "yomu_ln": TokenType.PRINTLN,
-    "f_open": TokenType.FILE_OPEN,
-    "f_close": TokenType.FILE_CLOSE,
-    "f_read": TokenType.FILE_READ,
-    "f_readline": TokenType.FILE_READLINE,
-    "f_write": TokenType.FILE_WRITE,
-    "f_writeline": TokenType.FILE_WRITELINE,
-    "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
-    "asChar": TokenType.GET_CHAR,
-    "split": TokenType.STR_SPLIT,
-    "len": TokenType.LEN,
-}
