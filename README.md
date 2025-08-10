@@ -23,15 +23,15 @@ intended for real-world use.
   ```
 - ##### ohayo: get input from user
   ```python
-  name wa ohayo("Enter name: ")
+  name = ohayo("Enter name: ")
   ```
 
 #### Variables
 
 ```
-name wa "NYAA"
-age wa 1000
-pi wa 3.142
+name = "NYAA"
+age = 1000
+pi = 3.142
 
 yomu(name)
 yomu(age)
@@ -93,11 +93,11 @@ NYAA
   ```python
   kawaii add(x, y) => {
     # return x + y 
-    modoru x purasu y
+    modoru x + y
   }
   
   uWu_nyaa() => {
-    result wa add(1, 1)
+    result = add(1, 1)
   }
   ```
 
@@ -121,7 +121,7 @@ kawaii greet(name) {
 # program block  
 uWu_nyaa() => {  
 	# Get input from user and assign it to name
-	name wa ohayo("Enter name: ") 
+	name = ohayo("Enter name: ") 
 	greet(name)
  }  
 ```
