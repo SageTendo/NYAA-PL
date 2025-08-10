@@ -786,7 +786,7 @@ class Interpreter:
 
         elif left.label == right.label:
             if left.label == "string":
-                res = eval(f'"{left.value}" {op} "{right.value}"')
+                res = eval(f"{repr(left.value)} {op} {repr(right.value)}")
             else:
                 res = eval(f"{left.value} {op} {right.value}")
             return RunTimeObject("boolean", res)
