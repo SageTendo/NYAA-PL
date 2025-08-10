@@ -852,6 +852,7 @@ class Parser:
         return file_node
 
     def parse_char_repr(self) -> CharReprNode:
+        """char_repr: GET_CHAR LPAR expr RPAR"""
         self.__expect_and_consume(TokenType.GET_CHAR)
         self.__expect_and_consume(TokenType.LPAR)
         if not TokenType.expression(self.curr_tkn):
@@ -867,14 +868,13 @@ class Parser:
         return CharReprNode(expr_node)
 
     def parse_length(self) -> LengthNode:
+        """length: LEN LPAR (expr | ID) RPAR"""
         self.__expect_and_consume(TokenType.LEN)
         self.__expect_and_consume(TokenType.LPAR)
-        if not self.__expected_token(TokenType.STR) and not self.__expected_token(
-            TokenType.ID
-        ):
+        if not TokenType.expression(self.curr_tkn):
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
-                "STR or ID",
+                "[EXPRESSION_TYPE]",
                 self.curr_tkn.line_num,
                 self.curr_tkn.column_num,
             )
