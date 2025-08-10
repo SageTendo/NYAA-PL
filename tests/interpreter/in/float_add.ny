@@ -1,4 +1,4 @@
 uWu_nyaa() => {
-    B wa 3.142 purasu (-4.2 purasu 4.5 purasu (4.8635 purodakuto 69.69))
+    B = 3.142 + (-4.2 + 4.5 + (4.8635 * 69.69))
     yomu_ln(B)
 }

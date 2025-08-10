@@ -1,1 +1,1 @@
-uWu_nyaa() => yomu(3 supuritto 0);
+uWu_nyaa() => yomu(3 / 0);

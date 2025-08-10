@@ -20,12 +20,12 @@ uWu_nyaa() => {
     }
     yomu_ln()
 
-    for _ => (0 purasu 1, 11 purodakuto 1) {
+    for _ => (0 + 1, 11 * 1) {
         yomu_ln(_)
     }
     yomu_ln()
 
-    a wa 11
+    a = 11
     for i => (1, a) {
         yomu_ln(i)
     }

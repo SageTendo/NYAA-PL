@@ -6,7 +6,7 @@ kawaii factorial(x) => {
     }
 
     # return x * factorial(x - 1)
-    modoru x purodakuto factorial(x mainasu 1)
+    modoru x * factorial(x - 1)
 }
 
 # Main program block

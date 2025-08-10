@@ -1,5 +1,5 @@
 uWu_nyaa() => {
-    n wa 0
+    n = 0
 
     daijoubu(n <= 100) {
         yomu_ln(n)

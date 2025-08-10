@@ -7,7 +7,7 @@ kawaii test(x, y) => {
 }
 
 uWu_nyaa() => {
-    a wa 10
-    b wa 10
+    a = 10
+    b = 10
     test(a, b)
 }

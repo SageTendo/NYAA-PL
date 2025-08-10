@@ -1,20 +1,20 @@
 kawaii init_tape(size) => {
     for _ => (0, size) {
-        tape[_] wa 0
+        tape[_] = 0
     }
 }
 
 kawaii scan_loops() => {
-    pc wa 0
-    sp wa -1
+    pc = 0
+    sp = -1
 
     daijoubu (pc < program_size) { # 106 is the length of the BF program
-        byte wa program[pc]
+        byte = program[pc]
         nani (byte == "[") {
             sp++
-            stack[sp] wa pc
+            stack[sp] = pc
         } nandesuka (byte == "]") {
-            loops[stack[sp]] wa pc
+            loops[stack[sp]] = pc
             sp--
         }
 
@@ -23,51 +23,51 @@ kawaii scan_loops() => {
 }
 
 kawaii interpret() => {
-    pc wa 0
-    pointer wa 0
-    sp wa -1
+    pc = 0
+    pointer = 0
+    sp = -1
 
     daijoubu(pc < program_size) {
-        byte wa program[pc]
+        byte = program[pc]
         pc++
 
         nani (byte == "[") {
             nani (tape[pointer] == 0) {
-                pc wa loops[pc]
+                pc = loops[pc]
                 motto
             }
             sp++
-            stack[sp] wa pc
+            stack[sp] = pc
         } nandesuka (byte == "]") {
             nani (tape[pointer] != 0) {
-                pc wa stack[sp]
+                pc = stack[sp]
                 motto
             }
             sp--
         } nandesuka (byte == ">") {
-            nani (pointer purasu 1 < tape_size) {
+            nani (pointer + 1 < tape_size) {
                 pointer++
-            } baka { pointer wa 0 }
+            } baka { pointer = 0 }
         } nandesuka (byte == "<") {
             nani (pointer > 0) {
                 pointer--
             }
         } nandesuka (byte == "+") {
-            new_val wa tape[pointer] purasu 1
+            new_val = tape[pointer] + 1
             nani (new_val <= 255) {
-                tape[pointer] wa new_val
-            } baka { tape[pointer] wa 0 }
+                tape[pointer] = new_val
+            } baka { tape[pointer] = 0 }
         } nandesuka (byte == "-") {
-            new_val wa tape[pointer] mainasu 1
+            new_val = tape[pointer] - 1
             nani (new_val >= 0) {
-                tape[pointer] wa new_val
-            } baka { tape[pointer] wa 255 }
+                tape[pointer] = new_val
+            } baka { tape[pointer] = 255 }
         } nandesuka (byte == ".") {
-            val wa tape[pointer]
+            val = tape[pointer]
             yomu(asChar(val))
         } nandesuka (byte == ",") {
-            val wa ohayo("user input: ")
-            tape[pointer] wa val
+            val = ohayo("user input: ")
+            tape[pointer] = val
         }
     }
     yomu_ln()
@@ -84,7 +84,7 @@ uWu_nyaa() => {
     "+", "+", "+", ".", ">", ">", ".", "<", "-", ".", "<", ".", "+", "+", "+", ".", "-",
     "-", "-", "-", "-", "-", ".", "-", "-", "-", "-", "-", "-", "-", "-", ".", ">", ">",
     "+", ".", ">", "+", "+", "."}
-    program_size wa 106
+    program_size = 106
 
 
     ##
@@ -98,7 +98,7 @@ uWu_nyaa() => {
         Program execution
     ##
     stack => [100]
-    tape_size wa 10000
+    tape_size = 10000
     tape => [tape_size]
     init_tape(tape_size)
     interpret()

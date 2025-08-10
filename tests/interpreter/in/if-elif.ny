@@ -1,8 +1,8 @@
 uWu_nyaa() => {
-    test wa IIE
+    test = IIE
 
     nani (test) {
-    } nandesuka (nai test) {
+    } nandesuka (!test) {
         yomu_ln(IIE)
     }
 }

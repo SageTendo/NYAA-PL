@@ -1,5 +1,5 @@
 uWu_nyaa() => {
-    x wa 0
+    x = 0
     daijoubu (x < 3) {
         nani (x == 0) {
             nani (x == 0) {

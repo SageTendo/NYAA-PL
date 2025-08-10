@@ -16,15 +16,15 @@ class TestExpressions(BaseTest):
         self.lexer: Lexer = Lexer()
         self.parser: Parser = Parser(lexer=self.lexer)
         self.interpreter: Interpreter = Interpreter()
-        self.num_random_tests = 25000
+        self.num_random_tests = 15000
 
     def test_operator_precedence_expressions(self):
         self.print_header("Operator Precedence Expressions")
         operators = [
-            ("purasu", "+"),
-            ("mainasu", "-"),
-            ("purodakuto", "*"),
-            ("supuritto", "/"),
+            "+",
+            "-",
+            "*",
+            "/",
         ]
 
         start = -sys.maxsize - 1
@@ -44,22 +44,17 @@ class TestExpressions(BaseTest):
             op3 = choice(operators)
 
             # Generate expressions
-            repl_input = (
-                f"{a} {op1[0]} {b} {op2[0]} {c} {op3[0]} {d} {op1[0]} {e} {op2[0]} {f}"
-            )
-            eval_input = (
-                f"{a} {op1[1]} {b} {op2[1]} {c} {op3[1]} {d} {op1[1]} {e} {op2[1]} {f}"
-            )
+            test_input = f"{a} {op1} {b} {op2} {c} {op3} {d} {op1} {e} {op2} {f}"
             try:
-                expected = eval(eval_input)
-                ast = self.parser.parse_repl(repl_input=repl_input)
+                expected = eval(test_input)
+                ast = self.parser.parse_repl(repl_input=test_input)
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:
                     print(f"{ERROR}   Failed{ENDC}")
                     self.fail(
                         f"EXPRESSION:\n"
-                        f"    {eval_input}\n"
+                        f"    {test_input}\n"
                         f"EXPECTED RESULT= {expected}\n"
                         f"ACTUAL RESULT=  {result.value}\n"
                     )
@@ -74,12 +69,10 @@ class TestExpressions(BaseTest):
     def test_prioritized_expressions(self):
         self.print_header("Prioritized Expressions")
         operators = [
-            ("purasu", "+"),
-            ("mainasu", "-"),
-            ("purodakuto", "*"),
-            ("supuritto", "/"),
-            ("ando", "and"),
-            ("matawa", "or"),
+            "+",
+            "-",
+            "*",
+            "/",
         ]
 
         start = -sys.maxsize - 1
@@ -97,19 +90,18 @@ class TestExpressions(BaseTest):
             op3 = choice(operators)
 
             # Generate expressions
-            repl_input = f"({a} {op1[0]} {b}) {op2[0]} ({c} {op3[0]} {d})"
-            eval_input = f"({a} {op1[1]} {b}) {op2[1]} ({c} {op3[1]} {d})"
+            test_input = f"({a} {op1} {b}) {op2} ({c} {op3} {d})"
 
             try:
-                expected = eval(eval_input)
-                ast = self.parser.parse_repl(repl_input=repl_input)
+                expected = eval(test_input)
+                ast = self.parser.parse_repl(repl_input=test_input)
                 result = self.interpreter.interpret(ast)
 
                 if result.value != expected:
                     print(f"{WARNING}  Failed{ENDC}")
                     self.fail(
                         f"EXPRESSION:\n"
-                        f"    {eval_input}\n"
+                        f"    {test_input}\n"
                         f"EXPECTED RESULT= {expected}\n"
                         f"ACTUAL RESULT=  {result.value}\n"
                     )

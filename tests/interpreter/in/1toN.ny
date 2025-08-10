@@ -5,7 +5,7 @@ kawaii inc(x, N) => {
     yomu_ln(x) # print(x)
 
     # inc(x + 1, N - 1)
-    inc(x purasu 1, N mainasu 1)
+    inc(x + 1, N - 1)
 }
 
 uWu_nyaa() => {

@@ -1,5 +1,5 @@
 uWu_nyaa() => {
-    test wa "baka"
+    test = "baka"
 
     nani (test == "nani")
     { yomu_ln("nani")}
