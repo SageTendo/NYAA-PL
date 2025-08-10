@@ -958,7 +958,7 @@ class Parser:
         """
         factor: ID | INT | INT '.' INT | STR
                 | TRUE | FALSE | LPAR expr RPAR
-                | NOT factor | NEG factor | Func_Call
+                | NOT factor | MINUS factor | Func_Call
         """
         self.__log("<Factor>")
 
@@ -1019,7 +1019,7 @@ class Parser:
             right_node = self.parse_factor()
             factor_node = FactorNode(left_node, right_node)
 
-        elif self.__expected_token(TokenType.NEG):
+        elif self.__expected_token(TokenType.MINUS):
             self.__consume_token()
             left_node = OperatorNode("-")
             right_node = self.parse_factor()
@@ -1028,7 +1028,7 @@ class Parser:
         else:
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
-                "[ID or INT or FLOAT or STR or TRUE or FALSE or LPAR or NOT or NEG]",
+                "[ID or INT or FLOAT or STR or TRUE or FALSE or LPAR or NOT or MINUS]",
                 self.curr_tkn.line_num,
                 self.curr_tkn.column_num,
             )
