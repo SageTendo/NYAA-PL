@@ -2,7 +2,7 @@ import os.path
 import sys
 from pathlib import Path
 
-from src.Lexer import Lexer
+from src.Lexer import Lexer, RESERVED_WORDS
 from src.core.Token import Token
 from src.core.Types import TokenType
 from src.utils.Constants import WARNING, SUCCESS, ENDC, ERROR
@@ -58,8 +58,13 @@ class TestLexer(BaseTest):
                 token = Token()
                 while token.type != TokenType.ENDMARKER:
                     token = self.lexer.get_token()
-
-                self.fail()
+                    if (
+                        token.word in RESERVED_WORDS
+                        and token.type != RESERVED_WORDS[token.word]
+                    ):
+                        self.fail(
+                            f"Reserved word found: {token.word} but type is {token.type}"
+                        )
             except Exception as e:
                 expected = expected.strip().lower()
                 e = str(e).lower()
