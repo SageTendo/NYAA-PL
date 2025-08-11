@@ -146,7 +146,7 @@ class Interpreter:
         if node.args:
             for arg in node.args.accept(self):
                 if arg.value not in params:
-                    params[arg.value] = arg.type
+                    params[arg.value] = arg.label
                 else:
                     raise InterpreterError(
                         ErrorType.RUNTIME,
@@ -282,9 +282,7 @@ class Interpreter:
         range_end = validate_range_node(node.range_end)
 
         # Create iterator in symbol table
-        iterator_runtime_object = RunTimeObject(
-            label="number", value=0, value_type="int"
-        )
+        iterator_runtime_object = RunTimeObject(label="number", value=0)
         self.current_env.insert_symbol(
             node.identifier.value,
             VarSymbol(node.identifier.value, iterator_runtime_object),
@@ -375,9 +373,7 @@ class Interpreter:
                 node.end_pos,
             )
 
-        array_symbol[index] = RunTimeObject(
-            value_runtime.label, value_runtime.value, value_runtime.type
-        )
+        array_symbol[index] = RunTimeObject(value_runtime.label, value_runtime.value)
 
     def visit_assignment(self, node: AssignmentNode):
         """
@@ -390,7 +386,7 @@ class Interpreter:
         if rhs.label in "function":
             self.current_env.insert_symbol(lhs.value, VarSymbol(lhs.value, rhs))
         else:
-            runtime_object = RunTimeObject(rhs.label, rhs.value, rhs.type)
+            runtime_object = RunTimeObject(rhs.label, rhs.value)
             self.current_env.insert_symbol(
                 lhs.value, VarSymbol(lhs.value, runtime_object)
             )
