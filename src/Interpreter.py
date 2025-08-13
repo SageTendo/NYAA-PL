@@ -61,8 +61,6 @@ class Interpreter:
         self.current_env = self.global_env
 
         #  Control flow flags
-        self.conditional_flag = False
-
         self.break_flag = False
         self.continue_flag = False
         self.return_flag = False
