@@ -36,7 +36,10 @@ class InterpreterError(Exception):
     def __init__(
         self, err_type: ErrorType, message: str, start_pos: Position, end_pos: Position
     ):
-        start_line_number, start_col_number = start_pos.line_number, start_pos.column_number
+        start_line_number, start_col_number = (
+            start_pos.line_number,
+            start_pos.column_number,
+        )
         end_line_number, end_col_number = end_pos.line_number, end_pos.column_number
 
         self.message = (
@@ -79,7 +82,12 @@ def throw_invalid_operation_err(lhs: str, op: str, rhs: str, start_pos, end_pos)
     @param start_pos: The starting position of the expression
     @param end_pos: The ending position of the expression
     """
-    raise InterpreterError(ErrorType.TYPE, f"Invalid operation {WARNING}'{lhs} {op} {rhs}'", start_pos, end_pos)
+    raise InterpreterError(
+        ErrorType.TYPE,
+        f"Invalid operation {WARNING}'{lhs} {op} {rhs}'",
+        start_pos,
+        end_pos,
+    )
 
 
 def throw_unary_type_err(operator, operand_label, start_pos, end_pos):
@@ -90,9 +98,13 @@ def throw_unary_type_err(operator, operand_label, start_pos, end_pos):
     @param start_pos: The starting position of the expression
     @param end_pos: The ending position of the expression
     """
-    raise InterpreterError(ErrorType.RUNTIME, f"Can't apply unary operator "
-                                              f"{WARNING}'{operator}'{ERROR} on a {WARNING}'{operand_label}'",
-                           start_pos, end_pos)
+    raise InterpreterError(
+        ErrorType.RUNTIME,
+        f"Can't apply unary operator "
+        f"{WARNING}'{operator}'{ERROR} on a {WARNING}'{operand_label}'",
+        start_pos,
+        end_pos,
+    )
 
 
 # ----------------------------------------------------------------------------------------------------------------------

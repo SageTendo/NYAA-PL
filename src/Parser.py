@@ -114,40 +114,40 @@ class Parser:
         """
         token_type = self.curr_tkn.type
         self.__expect_and_consume_op()
-
-        if token_type == TokenType.PLUS:
-            return "+"
-        elif token_type == TokenType.MINUS:
-            return "-"
-        elif token_type == TokenType.MULTIPLY:
-            return "*"
-        elif token_type == TokenType.DIVIDE:
-            return "/"
-        elif token_type == TokenType.AND:
-            return "and"
-        elif token_type == TokenType.OR:
-            return "or"
-        elif token_type == TokenType.LT:
-            return "<"
-        elif token_type == TokenType.GT:
-            return ">"
-        elif token_type == TokenType.LTE:
-            return "<="
-        elif token_type == TokenType.GTE:
-            return ">="
-        elif token_type == TokenType.EQ:
-            return "=="
-        elif token_type == TokenType.NEQ:
-            return "!="
-        elif token_type == TokenType.MODULO:
-            return "%"
-        else:
-            return throw_unexpected_token_err(
-                token_type,
-                "[OPERATOR_TYPE]",
-                self.curr_tkn.line_num,
-                self.curr_tkn.column_num,
-            )
+        match token_type:
+            case TokenType.PLUS:
+                return "+"
+            case TokenType.MINUS:
+                return "-"
+            case TokenType.MULTIPLY:
+                return "*"
+            case TokenType.DIVIDE:
+                return "/"
+            case TokenType.AND:
+                return "and"
+            case TokenType.OR:
+                return "or"
+            case TokenType.LT:
+                return "<"
+            case TokenType.GT:
+                return ">"
+            case TokenType.LTE:
+                return "<="
+            case TokenType.GTE:
+                return ">="
+            case TokenType.EQ:
+                return "=="
+            case TokenType.NEQ:
+                return "!="
+            case TokenType.MODULO:
+                return "%"
+            case _:
+                return throw_unexpected_token_err(
+                    token_type,
+                    "[OPERATOR_TYPE]",
+                    self.curr_tkn.line_num,
+                    self.curr_tkn.column_num,
+                )
 
     def parse_program(self) -> ProgramNode:
         """program: funcDef* MAIN LPAR RPAR TO (LBRACE body RBRACE | statement ';') | EOF;"""
