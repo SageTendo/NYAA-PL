@@ -27,17 +27,17 @@ kawaii first_class_with_func_arg(func) => {
 uWu_nyaa() => {
     # This should print "First class" twice
     first_class()
-    x wa first_class
+    x = first_class
     x()
 
     # This should print 10 twice
     yomu_ln(first_class_with_arg(10))
-    x wa first_class_with_arg
+    x = first_class_with_arg
     yomu_ln(x(10))
 
     # This should print "Hello"
     # What doesn't work: returnSomeFunc(someFunc)(), and probably won't support it
-    wrapped wa first_class_with_func_arg(say_hello)
+    wrapped = first_class_with_func_arg(say_hello)
     wrapped()
     yomu_ln()
 

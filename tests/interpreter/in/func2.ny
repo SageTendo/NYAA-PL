@@ -1,9 +1,9 @@
 kawaii add() => {
-    modoru 3 purodakuto 3
+    modoru 3 * 3
 }
 
 uWu_nyaa() => {
-    a wa 3
-    a wa add()
+    a = 3
+    a = add()
     yomu_ln(a)
 }

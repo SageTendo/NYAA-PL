@@ -12,33 +12,31 @@ class Node:
         self.end_pos: Position = Position(line=-1, col=-1)
 
     def accept(self, visitor):
-        """Invokes visitor method on node"""
         if cached_visit := cache_mem.get(self):
             return cached_visit(self)
         return visitor.visit(self)
 
+    @staticmethod
+    def to_serializable(value):
+        if isinstance(value, Node):
+            return value.to_json
+        elif isinstance(value, Position):
+            return value.line_number, value.column_number
+        elif isinstance(value, bool):
+            return str(value)
+        elif isinstance(value, list):
+            return [item.to_json for item in value]
+        elif isinstance(value, dict):
+            return {key: value.to_json for key, value in value.items() if value}
+        return str(value)
+
     @property
     def to_json(self) -> dict:
-        """Represent AST/Node as dictionary"""
-        json_data = {}
-        for k, v in self.__dict__.items():
-            if v is None:
-                continue
-
-            if isinstance(v, Node):
-                json_data[k] = v.to_json
-            elif isinstance(v, Position):
-                json_data[k] = (v.line_number, v.column_number)
-            elif isinstance(v, bool):
-                json_data[k] = "true" if v is True else "false"
-            elif isinstance(v, list):
-                json_data[k] = [item.to_json for item in v]
-            elif isinstance(v, dict):
-                json_data[k] = {}
-                json_data[k] = {key: value.to_json for key, value in v.items() if value}
-            else:
-                json_data[k] = v
-        return json_data
+        return {
+            k: self.to_serializable(v)
+            for k, v in self.__dict__.items()
+            if v is not None
+        }
 
     def encode_json(self) -> str:
         return json.dumps(self.to_json, indent=2)
@@ -204,6 +202,12 @@ class CharReprNode(ExprNode):
         self.expr = expr
 
 
+class IntReprNode(ExprNode):
+    def __init__(self, expr):
+        super().__init__("int_repr")
+        self.expr = expr
+
+
 class InputNode(ExprNode):
     def __init__(self, msg=None):
         super().__init__("input")
@@ -247,6 +251,12 @@ class FactorNode(ExprNode):
         self.right = right
 
 
+class LengthNode(ExprNode):
+    def __init__(self, expr):
+        super().__init__("length")
+        self.expr = expr
+
+
 class ArrayNode(Node):
     def __init__(
         self,
@@ -256,6 +266,7 @@ class ArrayNode(Node):
         size: Optional[ExprNode] = None,
         value: Optional[ExprNode] = None,
         initial_values: Optional[list[ExprNode]] = None,
+        string_value: Optional[ExprNode] = None,
     ):
         super().__init__(label)
         self.identifier = identifier
@@ -263,6 +274,7 @@ class ArrayNode(Node):
         self.size = size
         self.value = value
         self.initial_values = initial_values
+        self.string_value = string_value
 
 
 class FileNode(ExprNode):

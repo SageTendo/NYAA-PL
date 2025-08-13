@@ -1,4 +1,4 @@
 uWu_nyaa() => {
-    namae B wa 3 purasu (-4 purasu 4 purasu (4 purodakuto 4));
+    namae B = 3 + (-4 + 4 + (4 * 4));
     B++;
 }

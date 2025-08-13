@@ -33,6 +33,8 @@ from src.core.ASTNodes import (
     ArrayNode,
     FileNode,
     CharReprNode,
+    LengthNode,
+    IntReprNode,
 )
 from src.core.Token import Token
 from src.core.Types import TokenType
@@ -112,38 +114,40 @@ class Parser:
         """
         token_type = self.curr_tkn.type
         self.__expect_and_consume_op()
-
-        if token_type == TokenType.PLUS:
-            return "+"
-        elif token_type == TokenType.MINUS:
-            return "-"
-        elif token_type == TokenType.MULTIPLY:
-            return "*"
-        elif token_type == TokenType.DIVIDE:
-            return "/"
-        elif token_type == TokenType.AND:
-            return "and"
-        elif token_type == TokenType.OR:
-            return "or"
-        elif token_type == TokenType.LT:
-            return "<"
-        elif token_type == TokenType.GT:
-            return ">"
-        elif token_type == TokenType.LTE:
-            return "<="
-        elif token_type == TokenType.GTE:
-            return ">="
-        elif token_type == TokenType.EQ:
-            return "=="
-        elif token_type == TokenType.NEQ:
-            return "!="
-        else:
-            return throw_unexpected_token_err(
-                token_type,
-                "[OPERATOR_TYPE]",
-                self.curr_tkn.line_num,
-                self.curr_tkn.column_num,
-            )
+        match token_type:
+            case TokenType.PLUS:
+                return "+"
+            case TokenType.MINUS:
+                return "-"
+            case TokenType.MULTIPLY:
+                return "*"
+            case TokenType.DIVIDE:
+                return "/"
+            case TokenType.AND:
+                return "and"
+            case TokenType.OR:
+                return "or"
+            case TokenType.LT:
+                return "<"
+            case TokenType.GT:
+                return ">"
+            case TokenType.LTE:
+                return "<="
+            case TokenType.GTE:
+                return ">="
+            case TokenType.EQ:
+                return "=="
+            case TokenType.NEQ:
+                return "!="
+            case TokenType.MODULO:
+                return "%"
+            case _:
+                return throw_unexpected_token_err(
+                    token_type,
+                    "[OPERATOR_TYPE]",
+                    self.curr_tkn.line_num,
+                    self.curr_tkn.column_num,
+                )
 
     def parse_program(self) -> ProgramNode:
         """program: funcDef* MAIN LPAR RPAR TO (LBRACE body RBRACE | statement ';') | EOF;"""
@@ -278,7 +282,7 @@ class Parser:
         self.__expect_and_consume(TokenType.TO)
 
         match self.curr_tkn.type:
-            case TokenType.LBRACE | TokenType.LBRACKET:
+            case TokenType.LBRACE | TokenType.LBRACKET | TokenType.STR_SPLIT:
                 pointer_node = self.parse_array_def(identifier=identifier)
             case TokenType.FILE_OPEN:
                 pointer_node = self.parse_file_open(identifier=identifier)
@@ -382,6 +386,8 @@ class Parser:
 
         size = None
         values: list[ExprNode] = []
+        string_value = None
+
         if self.__expected_token(TokenType.LBRACKET):
             self.__expect_and_consume(TokenType.LBRACKET)
             size = self.parse_simple_expr()
@@ -395,9 +401,30 @@ class Parser:
                     self.__expect_and_consume(TokenType.COMMA)
             self.__expect_and_consume(TokenType.RBRACE)
 
+        elif self.__expected_token(TokenType.STR_SPLIT):
+            self.__expect_and_consume(TokenType.STR_SPLIT)
+            self.__expect_and_consume(TokenType.LPAR)
+            if TokenType.callable(self.curr_tkn):
+                string_value = self.parse_callable()
+            elif self.__expected_token(TokenType.STR):
+                string_value = self.parse_expr()
+            self.__expect_and_consume(TokenType.RPAR)
+
+        else:
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "[LBRACKET or LBRACE or STR_SPLIT]",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
         self.__log("<ArrDef>")
         array_node = ArrayNode(
-            label="array_def", identifier=identifier, size=size, initial_values=values
+            label="array_def",
+            identifier=identifier,
+            size=size,
+            initial_values=values,
+            string_value=string_value,
         )
         array_node.start_pos = start_pos
         array_node.end_pos = self.curr_tkn.position
@@ -735,6 +762,10 @@ class Parser:
             call_node = self.parse_file_IO()
         elif self.__expected_token(TokenType.GET_CHAR):
             call_node = self.parse_char_repr()
+        elif self.__expected_token(TokenType.GET_INT):
+            call_node = self.parse_int_repr()
+        elif self.__expected_token(TokenType.LEN):
+            call_node = self.parse_length()
         elif self.__expected_token(TokenType.ID):
             call_node = self.parse_func_call()
         else:
@@ -826,6 +857,7 @@ class Parser:
         return file_node
 
     def parse_char_repr(self) -> CharReprNode:
+        """char_repr: GET_CHAR LPAR expr RPAR"""
         self.__expect_and_consume(TokenType.GET_CHAR)
         self.__expect_and_consume(TokenType.LPAR)
         if not TokenType.expression(self.curr_tkn):
@@ -839,6 +871,38 @@ class Parser:
         expr_node = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
         return CharReprNode(expr_node)
+
+    def parse_int_repr(self) -> IntReprNode:
+        """int_repr: GET_INT LPAR expr RPAR"""
+        self.__expect_and_consume(TokenType.GET_INT)
+        self.__expect_and_consume(TokenType.LPAR)
+        if not TokenType.expression(self.curr_tkn):
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "[EXPRESSION_TYPE]",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
+        expr_node = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+        return IntReprNode(expr_node)
+
+    def parse_length(self) -> LengthNode:
+        """length: LEN LPAR (expr | ID) RPAR"""
+        self.__expect_and_consume(TokenType.LEN)
+        self.__expect_and_consume(TokenType.LPAR)
+        if not TokenType.expression(self.curr_tkn):
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "[EXPRESSION_TYPE]",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
+        expr_node = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+        return LengthNode(expr_node)
 
     def parse_expr(self) -> ExprNode:
         """expr: simpleExpr | simpleExpr relationalOp simpleExpr"""
@@ -915,7 +979,7 @@ class Parser:
         """
         factor: ID | INT | INT '.' INT | STR
                 | TRUE | FALSE | LPAR expr RPAR
-                | NOT factor | NEG factor | Func_Call
+                | NOT factor | MINUS factor | Func_Call
         """
         self.__log("<Factor>")
 
@@ -976,16 +1040,19 @@ class Parser:
             right_node = self.parse_factor()
             factor_node = FactorNode(left_node, right_node)
 
-        elif self.__expected_token(TokenType.NEG):
+        elif self.__expected_token(TokenType.MINUS):
             self.__consume_token()
             left_node = OperatorNode("-")
             right_node = self.parse_factor()
             factor_node = FactorNode(left_node, right_node)
 
+        elif TokenType.callable(self.curr_tkn):
+            return self.parse_callable()
+
         else:
             return throw_unexpected_token_err(
                 self.curr_tkn.type,
-                "[ID or INT or FLOAT or STR or TRUE or FALSE or LPAR or NOT or NEG]",
+                "[ID or INT or FLOAT or STR or TRUE or FALSE or LPAR or NOT or MINUS]",
                 self.curr_tkn.line_num,
                 self.curr_tkn.column_num,
             )

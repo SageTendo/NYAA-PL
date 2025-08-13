@@ -1,8 +1,37 @@
 from pathlib import Path
 from src.core.Token import Token, Position
-from src.core.Types import TokenType, RESERVED_WORDS
+from src.core.Types import TokenType
 from src.utils.Constants import EOF, MAX_ID_LEN, MAX_STR_LEN
 from src.utils.ErrorHandler import LexerError
+
+RESERVED_WORDS = {
+    "uWu_nyaa": TokenType.MAIN,
+    "yomu": TokenType.PRINT,
+    "ohayo": TokenType.INPUT,
+    "daijoubu": TokenType.WHILE,
+    "nani": TokenType.IF,
+    "nandesuka": TokenType.ELIF,
+    "baka": TokenType.ELSE,
+    "yamete": TokenType.BREAK,
+    "motto": TokenType.CONTINUE,
+    "kawaii": TokenType.DEF,
+    "HAI": TokenType.TRUE,
+    "IIE": TokenType.FALSE,
+    "modoru": TokenType.RET,
+    "for": TokenType.FOR,
+    "yomu_ln": TokenType.PRINTLN,
+    "f_open": TokenType.FILE_OPEN,
+    "f_close": TokenType.FILE_CLOSE,
+    "f_read": TokenType.FILE_READ,
+    "f_readline": TokenType.FILE_READLINE,
+    "f_write": TokenType.FILE_WRITE,
+    "f_writeline": TokenType.FILE_WRITELINE,
+    "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
+    "asChar": TokenType.GET_CHAR,
+    "asInt": TokenType.GET_INT,
+    "split": TokenType.STR_SPLIT,
+    "len": TokenType.LEN,
+}
 
 
 class Lexer:
@@ -118,6 +147,7 @@ class Lexer:
                     token.type = TokenType.SEMICOLON
                     self.__next_char()
                 elif self.__char == "=":
+                    token.type = TokenType.ASSIGN
                     self.__next_char()
                     if self.__char == "=":
                         token.type = TokenType.EQ
@@ -126,30 +156,65 @@ class Lexer:
                         token.type = TokenType.TO
                         self.__next_char()
 
+                # Arithmetic operators
                 elif self.__char == "+":
+                    token.type = TokenType.PLUS
                     self.__next_char()
                     if self.__char == "+":
                         token.type = TokenType.UN_ADD
                         self.__next_char()
                 elif self.__char == "-":
-                    token.type = TokenType.NEG
-
+                    token.type = TokenType.MINUS
                     self.__next_char()
                     if self.__char == "-":  # Check for decrement operator
                         token.type = TokenType.UN_SUB
                         self.__next_char()
 
+                # Multiplicative operators
+                elif self.__char == "*":
+                    token.type = TokenType.MULTIPLY
+                    self.__next_char()
+                elif self.__char == "/":
+                    token.type = TokenType.DIVIDE
+                    self.__next_char()
                 elif self.__char == "%":
                     token.type = TokenType.MODULO
                     self.__next_char()
+
+                # Relational operators
                 elif self.__char == "!":
                     token.type = TokenType.NOT
-
                     self.__next_char()
                     if self.__char == "=":
                         token.type = TokenType.NEQ
                         self.__next_char()
+                elif self.__char == "|":
+                    self.__next_char()
+                    if self.__char == "|":
+                        token.type = TokenType.OR
+                        self.__next_char()
+                elif self.__char == "&":
+                    self.__next_char()
+                    if self.__char == "&":
+                        token.type = TokenType.AND
+                        self.__next_char()
+                elif self.__char == "<":
+                    token.type = TokenType.LT
+                    self.__next_char()
+                    if self.__char == "=":
+                        token.type = TokenType.LTE
+                        self.__next_char()
+                elif self.__char == ">":
+                    token.type = TokenType.GT
+                    self.__next_char()
+                    if self.__char == "=":
+                        token.type = TokenType.GTE
+                        self.__next_char()
 
+                # Special tokens
+                elif self.__char == ",":
+                    token.type = TokenType.COMMA
+                    self.__next_char()
                 elif self.__char == "#":
                     self.__next_char()
                     if self.__char == "#":
@@ -158,25 +223,6 @@ class Lexer:
                     else:
                         self.__skip_comment()
                     token = self.get_token()
-                elif self.__char == "<":
-                    token.type = TokenType.LT
-
-                    self.__next_char()
-                    if self.__char == "=":
-                        token.type = TokenType.LTE
-                        self.__next_char()
-
-                elif self.__char == ">":
-                    token.type = TokenType.GT
-
-                    self.__next_char()
-                    if self.__char == "=":
-                        token.type = TokenType.GTE
-                        self.__next_char()
-
-                elif self.__char == ",":
-                    token.type = TokenType.COMMA
-                    self.__next_char()
                 else:
                     raise LexerError(
                         f"Unrecognized character '{self.__char}'",

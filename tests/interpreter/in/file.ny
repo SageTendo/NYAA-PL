@@ -1,5 +1,5 @@
 uWu_nyaa() => {
-  new_file_name wa "./tests/interpreter/out/file_out.txt"
+  new_file_name = "./tests/interpreter/out/file_out.txt"
   f => f_open(new_file_name, "w")
   buff => {new_file_name, " ", "write", "\n"}
   f_write(f, "Hello ")
@@ -15,7 +15,7 @@ uWu_nyaa() => {
   f_close(f)
 
   f => f_open(new_file_name, "r")
-  out wa f_read(f, 1)
+  out = f_read(f, 1)
   yomu_ln(out)
   yomu_ln(f_read(f, 1))
 

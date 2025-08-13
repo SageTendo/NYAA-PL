@@ -2,11 +2,11 @@
 # please notice me numpy.class.func senpai
 
 kawaii add(x, y) => {
-    modoru x purasu y
+    modoru x + y
 }
 
 kawaii add(x, y) => {
-    modoru x purasu y
+    modoru x + y
 }
 
 kawaii test() => {
@@ -18,26 +18,26 @@ kawaii test() => {
 uWu_nyaa() => {
     yomu(add(x, y))
     yomu("hello", "world!")
-    yomu(a purasu b)
+    yomu(a + b)
     yomu(a++)
-    namae a wa 3.2
-    namae b wa 4
-    namae c wa nai a
-    namae a wa -a
+    namae a = 3.2
+    namae b = 4
+    namae c = nai a
+    namae a = -a
 
     print(a ando nai b)
 
     a++
-    namae a wa (a purasu b)
+    namae a = (a + b)
     ohayo("hello")
     b--
-    namae B wa a++
+    namae B = a++
     yomu(HAI)
     yomu(IIE)
-    namae a wa a == b
+    namae a = a == b
 
-    namae name wa ohayo("User: ")
-    namae age wa ohayo()
+    namae name = ohayo("User: ")
+    namae age = ohayo()
 
     uWu i from(0, 1) {
         yomu(i)
