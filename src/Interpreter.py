@@ -31,6 +31,7 @@ from src.core.ASTNodes import (
     ArrayNode,
     CharReprNode,
     LengthNode,
+    IntReprNode,
 )
 from src.core.CacheMemory import cache_mem
 from src.core.Environment import Environment
@@ -61,8 +62,11 @@ class Interpreter:
 
         #  Control flow flags
         self.conditional_flag = False
+
         self.break_flag = False
         self.continue_flag = False
+        self.return_flag = False
+        self.return_value = None
 
         # Safety nets
         self.__visitor_depth = 0  # Keep track of the depth of the visitor
@@ -122,6 +126,7 @@ class Interpreter:
         # Visit (in the case of cache misses)
         if result := visit_method(node):
             self.__log(success_msg(f"Returned --> {node.label}: {result}"))
+        self.__log(warning_msg(f"Visited {node.label}"))
 
         self.__visitor_depth -= 1
         return result
@@ -167,34 +172,25 @@ class Interpreter:
         Interprets a body node, executes its statements,
         and returns the result of the last evaluated statement
         """
-        last_evaluated_stmt = None
         for stmt in node.statements:
-            if self.conditional_flag:
-                self.conditional_flag = False
+            if self.break_flag or self.return_flag:
                 break
 
-            elif self.break_flag:
-                break
-
-            elif self.continue_flag:
+            if self.continue_flag:
                 self.continue_flag = False
                 continue
 
-            evaluated_stmt = stmt.accept(self)
-            last_evaluated_stmt = (
-                evaluated_stmt if evaluated_stmt is not None else last_evaluated_stmt
-            )
-            if stmt.label == "return":
-                return last_evaluated_stmt
-        return last_evaluated_stmt
+            stmt.accept(self)
 
     def visit_return(self, node: ReturnNode):
         """
         Interprets a return statement node and
         returns the result of the evaluated expression if any
         """
-        if node.expr is not None:
-            return node.expr.accept(self)
+        self.node_start_pos = node.start_pos
+        self.node_end_pos = node.end_pos
+        self.return_value = node.expr.accept(self) if node.expr else None
+        self.return_flag = True
 
     def visit_break(self, node: BreakNode):
         """Interprets a break statement node"""
@@ -216,11 +212,9 @@ class Interpreter:
         if not body_node:
             return
 
-        last_evaluated_stmt = body_node.accept(self)
-        last_node = body_node.statements[-1]
-        if last_node.label == "return":
-            self.conditional_flag = True
-            return last_evaluated_stmt
+        body_node.accept(self)
+        if self.return_flag:
+            return self.return_value
 
     def visit_if(self, node: IfNode):
         """
@@ -292,8 +286,13 @@ class Interpreter:
         incrementer = 1 if range_start < range_end else -1
         for i in range(range_start, range_end, incrementer):
             iterator_runtime_object.value = i
-            if last_evaluated := self.__handle_conditional_execution(node.body):
-                return last_evaluated
+
+            if self.break_flag:
+                self.break_flag = False
+                break
+
+            if result := self.__handle_conditional_execution(node.body):
+                return result
 
     def visit_array_def(self, node: ArrayNode):
         """Visits an ArrayNode and creates a new array in the symbol table"""
@@ -303,7 +302,8 @@ class Interpreter:
         identifier = node.identifier
         if node.size:
             array_size = self.__test_for_identifier(node.size.accept(self)).value
-            values = [RunTimeObject("null", value="null")] * int(array_size)
+            # FIXME: Handle nulls
+            values = [RunTimeObject(label="number", value=0)] * int(array_size)
         elif node.initial_values:
             values = [value.accept(self) for value in node.initial_values]
         elif node.string_value:
@@ -437,7 +437,12 @@ class Interpreter:
         env_hash = self.current_env.hash()
         result = cache_mem.get(env_hash)
         if result is None:
-            result = function_symbol.body.accept(self)
+            function_symbol.body.accept(self)
+            if self.return_flag:
+                result = self.return_value
+                self.return_flag = False
+                self.return_value = None
+
             cache_mem.put(env_hash, result)
 
         self.current_env = old_env
@@ -627,6 +632,29 @@ class Interpreter:
             )
         return RunTimeObject("string", chr(expression.value))
 
+    def visit_int_repr(self, node: IntReprNode) -> RunTimeObject:
+        """Interprets a character and returns the ascii code representation"""
+        expression: RunTimeObject = node.expr.accept(self)
+        if expression.label != "string" or len(expression.value) != 1:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Expected a string representing a unicode character, got "
+                + expression.label,
+                node.start_pos,
+                node.end_pos,
+            )
+
+        try:
+            return RunTimeObject("number", ord(expression.value))
+        except ValueError:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Expected a unicode character representation between 0 and 0x10FFFF, got "
+                + str(expression.value),
+                node.start_pos,
+                node.end_pos,
+            )
+
     def visit_length(self, node: LengthNode) -> RunTimeObject:
         """Interprets a length expression and returns the result of the operation"""
         expression: RunTimeObject = node.expr.accept(self)
@@ -681,7 +709,7 @@ class Interpreter:
             # Handle operation
             if node.operator in ["+", "-", "or"]:
                 return self.handle_additive_expressions(left, right, node.operator)
-            elif node.operator in ["*", "/", "and"]:
+            elif node.operator in ["*", "/", "and", "%"]:
                 return self.handle_multiplicative_expressions(
                     left, right, node.operator
                 )
@@ -759,6 +787,10 @@ class Interpreter:
 
         elif op == "and":
             return RunTimeObject(right.label, left.value and right.value)
+
+        elif op == "%":
+            if left.label == "number" and left.label == right.label:
+                return RunTimeObject("number", left.value % right.value)
 
         # Invalid operation
         return throw_invalid_operation_err(

@@ -34,6 +34,7 @@ from src.core.ASTNodes import (
     FileNode,
     CharReprNode,
     LengthNode,
+    IntReprNode,
 )
 from src.core.Token import Token
 from src.core.Types import TokenType
@@ -138,6 +139,8 @@ class Parser:
             return "=="
         elif token_type == TokenType.NEQ:
             return "!="
+        elif token_type == TokenType.MODULO:
+            return "%"
         else:
             return throw_unexpected_token_err(
                 token_type,
@@ -759,6 +762,8 @@ class Parser:
             call_node = self.parse_file_IO()
         elif self.__expected_token(TokenType.GET_CHAR):
             call_node = self.parse_char_repr()
+        elif self.__expected_token(TokenType.GET_INT):
+            call_node = self.parse_int_repr()
         elif self.__expected_token(TokenType.LEN):
             call_node = self.parse_length()
         elif self.__expected_token(TokenType.ID):
@@ -866,6 +871,22 @@ class Parser:
         expr_node = self.parse_expr()
         self.__expect_and_consume(TokenType.RPAR)
         return CharReprNode(expr_node)
+
+    def parse_int_repr(self) -> IntReprNode:
+        """int_repr: GET_INT LPAR expr RPAR"""
+        self.__expect_and_consume(TokenType.GET_INT)
+        self.__expect_and_consume(TokenType.LPAR)
+        if not TokenType.expression(self.curr_tkn):
+            return throw_unexpected_token_err(
+                self.curr_tkn.type,
+                "[EXPRESSION_TYPE]",
+                self.curr_tkn.line_num,
+                self.curr_tkn.column_num,
+            )
+
+        expr_node = self.parse_expr()
+        self.__expect_and_consume(TokenType.RPAR)
+        return IntReprNode(expr_node)
 
     def parse_length(self) -> LengthNode:
         """length: LEN LPAR (expr | ID) RPAR"""
@@ -1024,6 +1045,9 @@ class Parser:
             left_node = OperatorNode("-")
             right_node = self.parse_factor()
             factor_node = FactorNode(left_node, right_node)
+
+        elif TokenType.callable(self.curr_tkn):
+            return self.parse_callable()
 
         else:
             return throw_unexpected_token_err(

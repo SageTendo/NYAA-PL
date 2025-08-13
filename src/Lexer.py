@@ -28,6 +28,7 @@ RESERVED_WORDS = {
     "f_writeline": TokenType.FILE_WRITELINE,
     "f_EOF": TokenType.FILE_EOF,  # TODO: Is this being used?
     "asChar": TokenType.GET_CHAR,
+    "asInt": TokenType.GET_INT,
     "split": TokenType.STR_SPLIT,
     "len": TokenType.LEN,
 }

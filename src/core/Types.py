@@ -41,6 +41,7 @@ class TokenType(Enum):
     PRINT = auto()
     PRINTLN = auto()
     GET_CHAR = auto()
+    GET_INT = auto()
     STR_SPLIT = auto()
     LEN = auto()
 
@@ -191,6 +192,7 @@ class TokenType(Enum):
         )
         # Handle negative numbers
         result |= token.type == TokenType.MINUS
+        result |= cls.callable(token)
         return result
 
     @classmethod
