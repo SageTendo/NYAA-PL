@@ -1,4 +1,4 @@
-from typing import TextIO
+from typing import IO, Any
 
 from src.core.ASTNodes import BodyNode
 from src.core.RuntimeObject import RunTimeObject
@@ -95,7 +95,7 @@ class ArraySymbol(Symbol):
 class FileSymbol(Symbol):
     """Represent a file object"""
 
-    def __init__(self, name: str, file: TextIO):
+    def __init__(self, name: str, file: IO[Any]):
         """
         Initializes a new file symbol
         @param name: The name of the identifier that references the file

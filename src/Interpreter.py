@@ -297,7 +297,6 @@ class Interpreter:
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
 
-        identifier = node.identifier
         if node.size:
             array_size = self.__test_for_identifier(node.size.accept(self)).value
             # FIXME: Handle nulls
@@ -312,8 +311,9 @@ class Interpreter:
         else:
             values = []
 
-        array_symbol = RunTimeObject("array", values)
-        self.current_env.insert_symbol(identifier, VarSymbol(identifier, array_symbol))
+        self.current_env.insert_symbol(
+            node.identifier, VarSymbol(node.identifier, RunTimeObject("array", values))
+        )
 
     def visit_array_access(self, node: ArrayNode):
         """
@@ -328,9 +328,8 @@ class Interpreter:
                 node.end_pos,
             )
 
-        identifier = node.identifier
         index = self.__test_for_identifier(node.index.accept(self)).value
-        array = self.current_env.lookup_symbol(identifier).value
+        array = self.current_env.lookup_symbol(node.identifier).value
 
         if index < 0 or index >= len(array):
             raise InterpreterError(
@@ -350,6 +349,14 @@ class Interpreter:
         self.node_start_pos = node.start_pos
         self.node_end_pos = node.end_pos
 
+        if not node.index:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                "Array index not provided",
+                self.node_start_pos,
+                self.node_end_pos,
+            )
+
         if not node.value:
             raise InterpreterError(
                 ErrorType.RUNTIME,
@@ -358,11 +365,10 @@ class Interpreter:
                 self.node_end_pos,
             )
 
-        identifier = node.identifier
         index = self.__test_for_identifier(node.index.accept(self)).value
         value_runtime = node.value.accept(self)
 
-        array_symbol = self.current_env.lookup_symbol(identifier).value
+        array_symbol = self.current_env.lookup_symbol(node.identifier).value
         if int(index) < 0 or int(index) >= len(array_symbol):
             raise InterpreterError(
                 ErrorType.RUNTIME,
@@ -436,6 +442,7 @@ class Interpreter:
         result = cache_mem.get(env_hash)
         if result is None:
             function_symbol.body.accept(self)
+
             if self.return_flag:
                 result = self.return_value
                 self.return_flag = False
@@ -466,28 +473,48 @@ class Interpreter:
 
     def visit_file_open(self, node: FileNode):
         """Interprets file open operation"""
+        if not node.filepath:
+            error = "File path must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
+        if not node.access_mode:
+            error = "File access mode must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
+        if not node.identifier:
+            error = "File identifier must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         try:
-            if not node.filepath:
-                raise ValueError("File path must be provided...")
-            elif not node.access_mode:
-                raise ValueError("File access mode must be provided...")
-
             filepath_object = node.filepath.accept(self)
-            access_mode_object = node.access_mode.accept(self)
             if not isinstance(filepath_object.value, str):
-                raise TypeError("File path must be a string...")
-            elif not isinstance(access_mode_object.value, str):
-                raise TypeError("File access mode must be a string...")
+                error = "File path must be a string..."
+                raise InterpreterError(
+                    ErrorType.TYPE, error, node.start_pos, node.end_pos
+                )
 
-            filepath = filepath_object.value
+            access_mode_object = node.access_mode.accept(self)
+            if not isinstance(access_mode_object.value, str):
+                error = "File access mode must be a string..."
+                raise InterpreterError(
+                    ErrorType.TYPE, error, node.start_pos, node.end_pos
+                )
+
             access_mode = access_mode_object.value.lower()
             if access_mode not in ["r", "w", "a"]:
-                raise ValueError(
-                    "Invalid file access mode provided...\n"
-                    "Valid Modes: 'r' (Read), 'w' (Write), 'a' (Append)"
+                error = "Invalid file access mode provided...\n Valid Modes: 'r' (Read), 'w' (Write), 'a' (Append)"
+                raise InterpreterError(
+                    ErrorType.TYPE, error, node.start_pos, node.end_pos
                 )
 
             try:
+                filepath = filepath_object.value
                 file = open(filepath, access_mode)
             except IOError:
                 raise
@@ -508,6 +535,18 @@ class Interpreter:
 
     def visit_file_write(self, node: FileNode):
         """Interprets file write operation"""
+        if not node.identifier:
+            error = "File identifier must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
+        if not node.write_buffer:
+            error = "No bytes were provided to write to file"
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         file_runtime_object = self.current_env.lookup_symbol(node.identifier)
         file_symbol = self.__test_for_identifier(file_runtime_object).value
 
@@ -546,10 +585,16 @@ class Interpreter:
 
     def visit_file_read(self, node: FileNode):
         """Interprets file read operation"""
+        if not node.identifier:
+            error = "File identifier must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         file_runtime_object = self.current_env.lookup_symbol(node.identifier)
         file_symbol = self.__test_for_identifier(file_runtime_object).value
-
         file: TextIO = file_symbol.file
+
         try:
             if file.closed:
                 raise IOError("Cannot read from a closed file")
@@ -572,10 +617,16 @@ class Interpreter:
 
     def visit_file_readline(self, node: FileNode):
         """Interprets file read line operation"""
+        if not node.identifier:
+            error = "File identifier must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         file_runtime_object = self.current_env.lookup_symbol(node.identifier)
         file_symbol = self.__test_for_identifier(file_runtime_object).value
-
         file: TextIO = file_symbol.file
+
         try:
             if file.closed:
                 raise IOError("Cannot read from a closed file")
@@ -594,6 +645,12 @@ class Interpreter:
 
     def visit_file_close(self, node: FileNode):
         """Interprets file close operation"""
+        if not node.identifier:
+            error = "File identifier must be provided..."
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         runtime_object = self.current_env.lookup_symbol(node.identifier)
         file_symbol: FileSymbol = self.__test_for_identifier(runtime_object).value
         file = file_symbol.file
@@ -613,7 +670,7 @@ class Interpreter:
         expression: RunTimeObject = node.expr.accept(self)
         if expression.label != "number":
             raise InterpreterError(
-                ErrorType.RUNTIME,
+                ErrorType.TYPE,
                 "Expected a number representing a unicode character, got "
                 + expression.label,
                 node.start_pos,
@@ -622,7 +679,7 @@ class Interpreter:
 
         if expression.value < 0 or expression.value > 0x10FFFF:
             raise InterpreterError(
-                ErrorType.RUNTIME,
+                ErrorType.TYPE,
                 "Expected a unicode character representation between 0 and 0x10FFFF, got "
                 + str(expression.value),
                 node.start_pos,
@@ -635,7 +692,7 @@ class Interpreter:
         expression: RunTimeObject = node.expr.accept(self)
         if expression.label != "string" or len(expression.value) != 1:
             raise InterpreterError(
-                ErrorType.RUNTIME,
+                ErrorType.TYPE,
                 "Expected a string representing a unicode character, got "
                 + expression.label,
                 node.start_pos,
@@ -646,7 +703,7 @@ class Interpreter:
             return RunTimeObject("number", ord(expression.value))
         except ValueError:
             raise InterpreterError(
-                ErrorType.RUNTIME,
+                ErrorType.TYPE,
                 "Expected a unicode character representation between 0 and 0x10FFFF, got "
                 + str(expression.value),
                 node.start_pos,
@@ -658,7 +715,7 @@ class Interpreter:
         expression: RunTimeObject = node.expr.accept(self)
         if expression.label != "string" and expression.label != "array":
             raise InterpreterError(
-                ErrorType.RUNTIME,
+                ErrorType.TYPE,
                 "Expected a string or array, got " + expression.label,
                 node.start_pos,
                 node.end_pos,
@@ -667,6 +724,12 @@ class Interpreter:
 
     def visit_postfix_expr(self, node: PostfixExprNode) -> RunTimeObject:
         """Interprets a postfix expression and returns the result of the operation"""
+        if not node.left:
+            error = f"Expected an identifier, got {node.left}"
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         lhs = node.left.accept(self)
         runtime_object = self.__test_for_identifier(lhs)
         runtime_object.value += 1 if node.operator == "++" else -1
@@ -697,10 +760,22 @@ class Interpreter:
         """
         Handles expressions and returns a runtime object representing the result of the operation
         """
+        if not node.left:
+            error = f"Expected a left-side expression, got {node.left}"
+            raise InterpreterError(
+                ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+            )
+
         left = node.left.accept(self)
         left = self.__test_for_identifier(left)
 
         if node.operator:
+            if not node.right:
+                error = f"Expected a right-side expression, got {node.left}"
+                raise InterpreterError(
+                    ErrorType.RUNTIME, error, node.start_pos, node.end_pos
+                )
+
             right = node.right.accept(self)
             right = self.__test_for_identifier(right)
 
@@ -824,9 +899,16 @@ class Interpreter:
 
     def visit_factor(self, node: FactorNode) -> RunTimeObject:
         """Visits a FactorNode and returns the value as a runtime object"""
+        if not node.left:
+            raise InterpreterError(
+                ErrorType.RUNTIME,
+                f"Expecting a left-side expression, got {node.left}",
+                node.start_pos,
+                node.end_pos,
+            )
+
         left_factor = node.left.accept(self)
         left_factor = self.__test_for_identifier(left_factor)
-
         if not node.right:
             return left_factor
 
